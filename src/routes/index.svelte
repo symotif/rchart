@@ -29,6 +29,10 @@
 	<Counter />
 </section>
 
+<button class="btn">
+	Button
+</button>
+
 <style>
 	section {
 		display: flex;
