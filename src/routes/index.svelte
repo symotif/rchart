@@ -10,11 +10,39 @@
 	<title>Home</title>
 </svelte:head>
 
-<div></div>
+<div>
+	<div class="rounded-lg shadow bg-base-200 drawer h-52">
+		<input id="my-drawer" type="checkbox" class="drawer-toggle"> 
+		<div class="flex flex-col items-center justify-center drawer-content">
+		  <label for="my-drawer" class="btn btn-primary drawer-button">open menu</label>
+		</div> 
+		<div class="drawer-side">
+		  <label for="my-drawer" class="drawer-overlay"></label> 
+		  <ul class="menu p-4 overflow-y-auto w-80 bg-base-100 text-base-content">
+			<li>
+			  <a>Menu Item</a>
+			</li> 
+			<li>
+			  <a>Menu Item</a>
+			</li>
+		  </ul>
+		</div>
+	  </div>
+</div>
 
 <button class="btn">
 	Button
 </button>
+
+<button class="inline-block px-4 py-3 text-sm font-semibold text-center text-white uppercase transition duration-200 ease-in-out bg-indigo-500 rounded-md cursor-pointer hover:bg-indigo-600">Tailwind Button</button>
+<button class="btn btn-primary rounded-full">daisyUI Button</button>
+
+<div class="avatar">
+	<div class="mb-8 rounded-box w-24 h-24 ring ring-primary ring-offset-base-100 ring-offset-2">
+	  <img src="http://daisyui.com/tailwind-css-component-profile-1@94w.png">
+	</div>
+	<p>Jody Smith, MD</p>
+  </div>
 
 <section>
 	<Counter />
