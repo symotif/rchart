@@ -9,7 +9,7 @@
 		<!-- profile -->
 		<a
 			href={'/profile'}
-			on:click={() => {
+			onclick={() => {
 				setTab(-1);
 			}}
 		>
@@ -29,7 +29,7 @@
 				alt="institution"
 				draggable="false"
 			/>
-			<span class="w-4 h-4 rounded-full bg-green-500 absolute bottom-0 left-2" />
+			<span class="w-4 h-4 rounded-full bg-green-500 absolute bottom-0 left-2"></span>
 		</div>
 	</div>
 

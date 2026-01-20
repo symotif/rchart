@@ -1,5 +1,5 @@
 <script lang="ts">
-	let isOpen = false;
+	let isOpen = $state(false);
 
 	const toggleDrawer = () => {
 		isOpen = !isOpen;
@@ -8,7 +8,7 @@
 
 <!-- Background -->
 {#if isOpen}
-	<div class="fixed inset-0 bg-opacity-60 z-40" on:click={toggleDrawer} />
+	<div class="fixed inset-0 bg-opacity-60 z-40" onclick={toggleDrawer}></div>
 {/if}
 
 <!-- Drawer -->
@@ -20,7 +20,7 @@
 	<div class="flex flex-col justify-center items-center p-0 m-0 w-0">
 		<div
 			class="relative -rotate-90 px-4 py-2 mr-8 bg-gray-100 rounded-lg cursor-pointer whitespace-nowrap"
-			on:click={toggleDrawer}
+			onclick={toggleDrawer}
 		>
 			<span class="text-m font-bold ">Message Center</span>
 		</div>

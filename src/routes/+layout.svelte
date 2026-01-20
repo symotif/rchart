@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css';
+	import type { Snippet } from 'svelte';
 
 	// components
 	import TabList from '../lib/components/TabList.svelte';
@@ -10,13 +11,11 @@
 
 	// stores
 	import { SideBarStore, setTab } from '../stores/SideBarStore';
-	$: $SideBarStore; // keeps track of the active side bar for styling
-
 	import { TabStore, ActiveTabStore, addTab, setActiveTab, removeTab } from '../stores/TabStore';
-	$: $ActiveTabStore;
-	$: $TabStore;
 
-	let newTabTitle: string = 'New Tab';
+	let { children }: { children: Snippet } = $props();
+
+	let newTabTitle: string = $state('New Tab');
 	// Add a new tab when called
 	function handleAddTab() {
 		const newTab = {
@@ -35,7 +34,7 @@
 	];
 </script>
 
-<body class="overscroll-none bg-gray-300">
+<div class="overscroll-none bg-gray-300 app-container">
 	<!-- top bar -->
 	<section class="flex flex-col absolute top-0 left-20 h-30 w-full pt-3 px-5 bg-white">
 		<!-- the top part of the bar -->
@@ -43,9 +42,7 @@
 			<!-- search box -->
 			<form class="w-full max-w-md">
 				<div class="relative flex items-center text-gray-400 focus-within:text-gray-500">
-					<i
-						class="fa-solid fa-magnifying-glass w-5 h-5 absolute ml-3 pointer-events-none"
-					/>
+					<i class="fa-solid fa-magnifying-glass w-5 h-5 absolute ml-3 pointer-events-none"></i>
 					<input
 						type="text"
 						name="search"
@@ -64,28 +61,28 @@
 			>
 				<!-- notifications -->
 				<button
-					on:click={() => {
+					onclick={() => {
 						handleAddTab();
-						setTab(-1); // show all inactive sidebar tabs
-					}}><i class="fa-solid fa-bell h-6 w-6 text-gray-500" /></button
+						setTab(-1);
+					}}><i class="fa-solid fa-bell h-6 w-6 text-gray-500"></i></button
 				>
 
 				<!-- statistics -->
 				<button
-					on:click={() => {
-						setTab(-1); // show all inactive sidebar tabs
+					onclick={() => {
+						setTab(-1);
 					}}
 					><a href="/stats"
-						><i class="fa-solid fa-chart-simple h-6 w-6 text-gray-500" /></a
+						><i class="fa-solid fa-chart-simple h-6 w-6 text-gray-500"></i></a
 					></button
 				>
 
 				<!-- settings -->
 				<button
-					on:click={() => {
-						setTab(-1); // show all inactive sidebar tabs
+					onclick={() => {
+						setTab(-1);
 					}}
-					><a href="/options"><i class="fa-solid fa-gear h-6 w-6 text-gray-500" /></a
+					><a href="/options"><i class="fa-solid fa-gear h-6 w-6 text-gray-500"></i></a
 					></button
 				>
 			</div>
@@ -103,7 +100,7 @@
 		<!-- sidebar tabs -->
 		{#each sideBarTabInfo as { label, icon, path }, index}
 			<button
-				on:click={() => {
+				onclick={() => {
 					setTab(index);
 				}}
 			>
@@ -114,7 +111,7 @@
 
 	<!-- page contents -->
 	<main>
-		<slot />
+		{@render children()}
 	</main>
 
 	<!-- message center -->
@@ -122,12 +119,12 @@
 
 	<!-- status bar -->
 	<StatusBar />
-</body>
+</div>
 
 <style>
-	body {
+	.app-container {
 		margin: 0;
-		height: 100%;
+		height: 100vh;
 		width: 100%;
 		overflow: hidden;
 	}

@@ -1,5 +1,5 @@
-<script>
-	export let data;
+<script lang="ts">
+	let { data }: { data: { time: string; name: string; age: string; sex: string } } = $props();
 </script>
 
 <div class="bg-red-100 p-5 rounded-lg border-6 shadow text-black">

@@ -1,28 +1,25 @@
-<script context="module" lang="ts">
-	export const prerender = true;
+<script lang="ts">
+	import { onMount } from 'svelte';
 	import Greet from '../lib/greet.svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import Card from './card.svelte';
-	let appointments = [
+	import Calendar from './calendar.svelte';
+
+	let appointments = $state([
 		{ name: 'Logan', age: '24', sex: 'Male', time: '12:30' },
 		{ name: 'John', age: '14', sex: 'Female', time: '1:30' },
 		{ name: 'Max', age: '50', sex: 'Male', time: '2:00' },
 		{ name: 'Sam', age: '22', sex: 'Nonbinary', time: '2:30' },
 		{ name: 'Ben', age: '23', sex: 'Male', time: '3:30' }
-	];
-	//let month: String = "Jan";
-	//const invoke = window.__TAURI_IPC__.invoke;
+	]);
+
 	async function get_month() {
 		month = await invoke('get_month');
 	}
-	//let appointments = await invoke('get_appointments');
 
 	// calendar code:
-	import Calendar from './calendar.svelte';
-	import { createEventDispatcher, onMount } from 'svelte';
-
-	var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-	let monthNames = [
+	const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	const monthNames = [
 		'January',
 		'February',
 		'March',
@@ -37,15 +34,16 @@
 		'December'
 	];
 
-	let headers = [];
-	let now = new Date();
-	let year = now.getFullYear(); //	this is the month & year displayed
-	let month = now.getMonth();
-	let eventText = 'Click an item or date';
+	let headers = $state([]);
+	const now = new Date();
+	let year = $state(now.getFullYear());
+	let month = $state(now.getMonth());
+	let eventText = $state('Click an item or date');
 
-	var days = []; //	The days to display in each box
+	let days = $state([]); //	The days to display in each box
+	let items = $state([]);
 
-	function randInt(max) {
+	function randInt(max: number) {
 		return Math.floor(Math.random() * max) + 1;
 	}
 
@@ -53,7 +51,6 @@
 	//	The items[] below are placed (by you) in a specified row & column of the calendar.
 	//	You need to call findRowCol() to calc the row/col based on each items start date. Each date box has a Date() property.
 	//	And, if an item overlaps rows, then you need to add a 2nd item on the subsequent row.
-	var items = [];
 
 	function initMonthItems() {
 		let y = year;
@@ -106,7 +103,10 @@
 		}
 	}
 
-	$: month, year, initContent();
+	// Initialize content on mount
+	onMount(() => {
+		initContent();
+	});
 
 	// choose what date/day gets displayed in each date box.
 	function initContent() {
@@ -120,11 +120,11 @@
 		let monthAbbrev = monthNames[month].slice(0, 3);
 		let nextMonthAbbrev = monthNames[(month + 1) % 12].slice(0, 3);
 		//	find the last Monday of the previous month
-		var firstDay = new Date(year, month, 1).getDay();
+		const firstDay = new Date(year, month, 1).getDay();
 		//console.log('fd='+firstDay+' '+dayNames[firstDay]);
-		var daysInThisMonth = new Date(year, month + 1, 0).getDate();
-		var daysInLastMonth = new Date(year, month, 0).getDate();
-		var prevMonth = month == 0 ? 11 : month - 1;
+		const daysInThisMonth = new Date(year, month + 1, 0).getDate();
+		const daysInLastMonth = new Date(year, month, 0).getDate();
+		const prevMonth = month == 0 ? 11 : month - 1;
 
 		//	show the days before the start of this month (disabled) - always less than 7
 		for (let i = daysInLastMonth - firstDay; i < daysInLastMonth; i++) {
@@ -147,11 +147,11 @@
 		}
 	}
 
-	function findRowCol(dt) {
+	function findRowCol(dt: Date) {
 		for (let i = 0; i < days.length; i++) {
 			let d = days[i].date;
 			if (
-				d.getYear() === dt.getYear() &&
+				d.getFullYear() === dt.getFullYear() &&
 				d.getMonth() === dt.getMonth() &&
 				d.getDate() === dt.getDate()
 			)
@@ -160,14 +160,14 @@
 		return null;
 	}
 
-	function itemClick(e) {
-		eventText = 'itemClick ' + JSON.stringify(e) + ' localtime=' + e.date.toString();
+	function itemClick(detail: any) {
+		eventText = 'itemClick ' + JSON.stringify(detail) + ' localtime=' + detail.date.toString();
 	}
-	function dayClick(e) {
-		eventText = 'onDayClick ' + JSON.stringify(e) + ' localtime=' + e.date.toString();
+	function dayClick(detail: any) {
+		eventText = 'onDayClick ' + JSON.stringify(detail) + ' localtime=' + detail.date.toString();
 	}
-	function headerClick(e) {
-		eventText = 'onHheaderClick ' + JSON.stringify(e);
+	function headerClick(detail: any) {
+		eventText = 'onHheaderClick ' + JSON.stringify(detail);
 	}
 	function next() {
 		month++;
@@ -175,6 +175,7 @@
 			year++;
 			month = 0;
 		}
+		initContent();
 	}
 	function prev() {
 		if (month == 0) {
@@ -183,21 +184,12 @@
 		} else {
 			month--;
 		}
+		initContent();
 	}
 </script>
 
-<script src="https://d3js.org/d3.v7.min.js">
-	import Page from './extensions/+page.svelte';
-</script>
-
-<!-- <script>
-	const svg = d3.select();
-	svg.
-</script> -->
-<!-- <script lang="ts"> -->
-<!-- </script> -->
-
 <svelte:head>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
 	<title>Home</title>
 	<meta name="description" content="an ehr for the world" />
 </svelte:head>
@@ -230,12 +222,12 @@
 			<div class="calendar-container">
 				<div class="calendar-header">
 					<h1>
-						<button on:click={() => year--}>&Lt;</button>
-						<button on:click={() => prev()}>&lt;</button>
+						<button onclick={() => year--}>&Lt;</button>
+						<button onclick={() => prev()}>&lt;</button>
 						{monthNames[month]}
 						{year}
-						<button on:click={() => next()}>&gt;</button>
-						<button on:click={() => year++}>&Gt;</button>
+						<button onclick={() => next()}>&gt;</button>
+						<button onclick={() => year++}>&Gt;</button>
 					</h1>
 					{eventText}
 				</div>
@@ -244,9 +236,9 @@
 					{headers}
 					{days}
 					{items}
-					on:dayClick={(e) => dayClick(e.detail)}
-					on:itemClick={(e) => itemClick(e.detail)}
-					on:headerClick={(e) => headerClick(e.detail)}
+					ondayClick={dayClick}
+					onitemClick={itemClick}
+					onheaderClick={headerClick}
 				/>
 			</div>
 			<div class="ml-5 mt-3">

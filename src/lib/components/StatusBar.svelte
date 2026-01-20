@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { ConnectionStatusStore, setConnectionStatus } from '../../stores/ConnectionStatusStore';
-	$: $ConnectionStatusStore;
 </script>
 
 <div

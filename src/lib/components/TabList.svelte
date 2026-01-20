@@ -7,7 +7,7 @@
 		removeTab
 	} from '../../stores/TabStore';
 
-	let newTabTitle: string = '';
+	let newTabTitle: string = $state('');
 
 	function handleAddTab() {
 		const newTab = {
@@ -40,7 +40,7 @@
 				<!-- delete tab button -->
 				<button
 					class="text-black text-sm -mt-2 -mr-3 ml-2 hover:text-red-700"
-					on:click={() => handleRemoveTab(tab.id)}
+					onclick={() => handleRemoveTab(tab.id)}
 				>
 					X
 				</button>

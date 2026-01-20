@@ -1,11 +1,11 @@
-<script context="module" lang="ts">
-	export const prerender = true;
+<script lang="ts">
 	import TabList from '../../lib/components/TabList.svelte';
 	import { goto } from '$app/navigation';
 	import { addTab, setActiveTab, TabStore, ActiveTabStore } from '../../stores/TabStore';
-	let comp;
 
-	let data = [
+	let comp: TabList;
+
+	let data = $state([
 		{
 			number: '001',
 			pic: '',
@@ -102,7 +102,7 @@
 			PCP: 'Dr. Geedee',
 			HealthScore: '2'
 		}
-	];
+	]);
 
 	function onPatientRowClick(patientId: string, patientName: string): void {
 		const newTab = {
@@ -139,7 +139,7 @@
 		<tbody class="divide-y divide-gray-100">
 			{#each data as patient}
 				<tr
-					on:click={() =>
+					onclick={() =>
 						onPatientRowClick(
 							patient.number,
 							`${patient.first_name} ${patient.last_name}`

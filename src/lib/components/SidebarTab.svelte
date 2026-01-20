@@ -1,8 +1,5 @@
 <script lang="ts">
-	export let label: string;
-	export let icon: string;
-	export let path: string;
-	export let isActive: boolean;
+	let { label, icon, path, isActive }: { label: string; icon: string; path: string; isActive: boolean } = $props();
 </script>
 
 <div class="group relative">
@@ -12,7 +9,7 @@
 			class={`flex items-center justify-center h-20 w-20 transition-all duration-300 ease-linear
 					${isActive ? 'bg-gray-300 text-gray-500' : 'text-gray-500 hover:bg-gray-500 hover:text-white'}`}
 		>
-			<i class={`${icon} fa-solid h-9 w-9`} />
+			<i class={`${icon} fa-solid h-9 w-9`}></i>
 		</div>
 	</a>
 

@@ -1,22 +1,42 @@
+<script lang="ts">
+	type Props = {
+		headers?: any[];
+		days?: any[];
+		items?: any[];
+		ondayClick?: (detail: any) => void;
+		onitemClick?: (detail: any) => void;
+		onheaderClick?: (detail: any) => void;
+	};
+
+	let {
+		headers = [],
+		days = [],
+		items = [],
+		ondayClick = () => {},
+		onitemClick = () => {},
+		onheaderClick = () => {}
+	}: Props = $props();
+</script>
+
 <div class="calendar">
 	{#each headers as header}
-	<span class="day-name" on:click={()=>dispatch('headerClick',header)}>{header}</span>
+	<span class="day-name" onclick={()=>onheaderClick(header)}>{header}</span>
 	{/each}
 
 	{#each days as day}
 		{#if day.enabled}
-			<span class="day" on:click={()=>dispatch('dayClick',day)}>{day.name}</span>
+			<span class="day" onclick={()=>ondayClick(day)}>{day.name}</span>
 		{:else}
-			<span class="day day-disabled" on:click={()=>dispatch('dayClick',day)}>{day.name}</span>
+			<span class="day day-disabled" onclick={()=>ondayClick(day)}>{day.name}</span>
 		{/if}
 	{/each}
-		
+
 	{#each items as item}
 		<section
-			on:click={()=>dispatch('itemClick',item)} 
+			onclick={()=>onitemClick(item)}
 			class="task {item.className}"
-      style="grid-column: {item.startCol} / span {item.len};      
-      grid-row: {item.startRow};  
+      style="grid-column: {item.startCol} / span {item.len};
+      grid-row: {item.startRow};
       align-self: {item.isBottom?'end':'center'};"
 			>
 			{item.title}
@@ -29,17 +49,6 @@
 		</section>
 	{/each}
 </div>
-
-<script>
-	import {createEventDispatcher, onMount} from 'svelte';
-
-	export var headers = [];
-	export let days = [];
-	export let items = [];
-	
-	let dispatch = createEventDispatcher();
-	
-</script>
 
 <style>
 .calendar {
@@ -203,7 +212,4 @@
   font-weight: 500;
   color: rgba(81, 86, 93, 0.7);
 }
-
 </style>
-
-
