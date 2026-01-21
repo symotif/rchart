@@ -1,233 +1,215 @@
 // disable the command prompt window that would normally pop up if someone is on windows running a bundled app
 #![cfg_attr(
-  all(not(debug_assertions), target_os = "windows"),
-  windows_subsystem = "windows"
+    all(not(debug_assertions), target_os = "windows"),
+    windows_subsystem = "windows"
 )]
 
-//use std::sync::{Arc, Mutex};
+mod db;
+
+use db::{DbState, Patient, Appointment, AppointmentWithPatient};
 use serde::{Deserialize, Serialize};
-//use tauri::State;
+use tauri::{State, Manager};
+use std::sync::Mutex;
 
-//use sqlx::sqlite::{SqlitePoolOptions, Connect, Pool, SqliteConnection};
-//use rusqlite::{Connection, NO_PARAMS};
-
-
+// ============ Legacy Appointment struct (for backwards compatibility) ============
 #[derive(Serialize, Deserialize)]
-pub struct Appointment {
+pub struct LegacyAppointment {
     pub name: String,
     pub age: u64,
     pub sex: String,
-    pub time: String
+    pub time: String,
 }
 
-impl Appointment {
-  fn Serialize(&self) {
-    println!("test!");
-  }
-}
-//   fn Deserialize(&self) {
-//     println!("I have no idea what i am doing!");
-//   }
-// }
-// use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
-// use std::str::FromStr;
-
-// let connection = SqliteConnectOptions::from_str("sqlite://sqlite.db")?
-//   .journal_mode(SqliteJournalMode::Wal)
-//   .read_only(true)
-//   .connect().await?;
-
-//, SqliteQueryResult, SqlitePool, migrate::MigrateDatabase};
-// use sqlx::Error as sqERR;
-// use tauri_plugin_sql::TauriSql;
-// use sqlite::Error as sqERR;
-
-// pub struct User {
-//   fname: String,
-// }
-
-// #[derive(Debug)]
-// pub enum UserErr {
-//   DbErr(sqERR)
-// }
-
-// impl From<sqERR> for UserErr {
-//   fn from(s: sqERR) -> Self {
-//     UserErr::DbErr(s)
-//   }
-// }
-
-// impl User {
-//   pub fn add(&self, username: &str, password: &str) -> Result<(), UserErr> {
-//     let connection = sqlite::open(&self.fname)?;
-//     let mut db = connection.prepare("insert into users(username, password) values (?, ?);")?;
-//     db.bind(1, username)?;
-//     db.bind(2, password)?;
-//     db.next()?;
-//     Ok(())
-//   }
-// }
-
-//#[tokio::main]
-//#[derive(Default)]
-//struct Counter(Arc<Mutex<i32>>);
-
-//#[async_std::main]
 fn main() {
-  //let conn = Connection::open("../../data/sqlite.db").unwrap();
+    tauri::Builder::default()
+        .setup(|app| {
+            // Get the database path
+            let db_path = db::get_db_path(&app.handle());
+            println!("Database path: {:?}", db_path);
 
-  // conn.execute("CREATE TABLE person (
-  //   id INTEGER PRIMARY KEY,
-  //   name TEXT NOT NULL,
-  //   email TEXT NOT NULL
-  //   )", []).unwrap();
+            // IMPORTANT: In production, this key should come from:
+            // - User authentication (derived from password)
+            // - OS keychain/secure storage
+            // - Environment variable (for development only)
+            // DO NOT hardcode in production!
+            let encryption_key = std::env::var("RCHART_DB_KEY")
+                .unwrap_or_else(|_| "CHANGE_THIS_KEY_IN_PRODUCTION".to_string());
 
-  //   let name: String = "Steve Example".to_string();
-  //   let email: String = "steve@example.org".to_string();
+            // Initialize the encrypted database
+            let conn = db::init_db(&db_path, &encryption_key)
+                .expect("Failed to initialize database");
 
-  //   conn.execute("INSERT INTO person (name, email) VALUE (?1, ?2)", &[&name, &email]).unwrap();
+            // Manage the database connection state
+            app.manage(DbState(Mutex::new(conn)));
 
-  // 1. Create connection pool
-  //let mut db_connection = SqliteConnection::connect("sqlite::///data/sqlite.db").await?;
-  // let pool = SqlitePoolOptions::new()
-  //   .max_connections(5)
-  //   .connect("sqlite:/data/sqlite.db").await?;
-
-  // // query
-  // let row: (i64, ) = sqlx::query_as("SELECT $1")
-  //   .bind(150_i64)
-  //   .fetch_one(&pool).await?;
-
-  // assert_eq!(row.0, 150);
-
-  // Ok(())
-
-  //Pool::bulder().max_size(1).build("sqlite:///data.sqlite.db").await?;
-  // let db_url: String = String::from("sqlite://sqlite.db");
-  //   if !Sqlite::database_exists(&db_url).await.unwrap_or(false) {
-  //       Sqlite::create_database(&db_url).await.unwrap();
-  //       match create_schema(&db_url).await {
-  //           Ok(_) => println!("Database Created Sucessfully"),
-  //           Err(e) => panic!("{}", e),
-  //       }
-  //   }
-  //   let instances: = SqlitePool::connect(&db_url).await.unwrap();
-  //   let qry ="INSERT INTO settings (description) VALUES($1)";
-  //   let result = sqlx::query(&qry).bind("testing").execute(&instances).await;
-
-  //   instances.close().await;
-
-  //   println!("{:?}", result);
-
-  // open a pool object to connect to the database
-  // sqlx::SqlitePool::connect
-
-  // // execute a query
-  // sqlx::query(&qry).execute(&pool);
-
-  // let pool = SqlitePoolOptions::new()
-  //  .max_connections(5)
-  //   .connect("sqlite://sqlite:password@localhost/test").await?;
-
-  //   // open a connection pool
-  //   let conn = SqliteConnection:connect("sqlite::memory:").await?;
-
-  //   // write  a query
-  //   let mut rows = sqlx::query("SELECT * FROM users WHERE email = ?")
-  //     .bind(email)
-  //     .fetch(&mut conn);
-
-  tauri::Builder::default()
-    .plugin(tauri_plugin_sql::Builder::default().build())
-    //.manage(Counter(Default::default()))
-    .invoke_handler(tauri::generate_handler![get_month, greet, get_appointments])
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            // Legacy commands
+            get_month,
+            greet,
+            get_appointments,
+            // New database commands
+            db_create_patient,
+            db_get_all_patients,
+            db_get_patient,
+            db_create_appointment,
+            db_get_appointments_for_date,
+            db_get_all_appointments,
+            db_seed_test_data,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }
 
-// function to add ryan to db
-// #[tauri::command]
-// fn add_ryan() -> String {
-//   let db = User {
-//     fname: String::from("./data/sqlite.db"),
-//   };
+// ============ Legacy Commands (kept for backwards compatibility) ============
 
-//   match db.add("ryan", "top_secret") {
-//     Ok(_) => println!("Adding ryan was a success!"),
-//     Err(UserErr::DbErr(ref err)) => println!(":( {:?}", err)
-//   }
-
-//   "Hello World!".to_string()
-// }
-
-// // grab tasks
 #[tauri::command]
 async fn get_month() -> String {
-  "May".to_string()
+    "May".to_string()
 }
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-  format!("hell, {}! You have been greeted from rust!", name)
+    format!("Hello, {}! You have been greeted from Rust!", name)
 }
 
 #[tauri::command]
-fn get_appointments() -> Vec<Appointment> {
-  let a1 = Appointment {
-    name: String::from("Logan"),
-    age: 24,
-    sex: String::from("Male"),
-    time: String::from("3:30"),
-  };
-
-  let a2 = Appointment {
-    name: String::from("Clarance"),
-    age: 25,
-    sex: String::from("Male"),
-    time: String::from("4:30"),
-  };
-
-  let a3 = Appointment {
-    name: String::from("Tristy"),
-    age: 44,
-    sex: String::from("Female"),
-    time: String::from("5:30"),
-  };
-
-  let mut vec: Vec<Appointment> = Vec::new();
-  vec.push(a1);
-  vec.push(a2);
-  vec.push(a3);
-
-  vec
+fn get_appointments() -> Vec<LegacyAppointment> {
+    vec![
+        LegacyAppointment {
+            name: String::from("Logan"),
+            age: 24,
+            sex: String::from("Male"),
+            time: String::from("3:30"),
+        },
+        LegacyAppointment {
+            name: String::from("Clarance"),
+            age: 25,
+            sex: String::from("Male"),
+            time: String::from("4:30"),
+        },
+        LegacyAppointment {
+            name: String::from("Tristy"),
+            age: 44,
+            sex: String::from("Female"),
+            time: String::from("5:30"),
+        },
+    ]
 }
 
-// async function
-// async fn create_schema(db_url:&str) -> Result<SqliteQueryResult, sqlx::Error> {
-//   let pool = SqlitePool::connect(&db_url).await?;
-//   let qry =
-//   "PRAGMA foreign_keys = ON ;
-//   CREATE TABLE IF NOT EXISTS settings
-//       (
-//           settings_id             INTEGER PRIMARY KEY NOT NULL,
-//           description             TEXT                NOT NULL,
-//           created_on              DATETIME DEFAULT (datetime('now','localtime')),
-//           updated_on              DATETIME DEFAULT (datetime('now','localtime')),
-//           done                    BOOLEAN             NOT NULL DEFAULT 0
-//       );
-//   CREATE TABLE IF NOT EXISTS project
-//       (
-//           project_id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-//           product_name                 TEXT ,
-//           created_on                   DATETIME DEFAULT (datetime('now','localtime')),
-//           updated_on                   DATETIME DEFAULT (datetime('now','localtime')),
-//           img_directory                TEXT NOT NULL,
-//           out_directory                TEXT NOT NULL,
-//           status                       TEXT NOT NULL,
-//           settings_id                  INTEGER  NOT NULL DEFAULT 1,
-//           FOREIGN KEY (settings_id)    REFERENCES settings (settings_id) ON UPDATE SET NULL ON DELETE SET NULL
-//       );";
-//   let result = sqlx::query(&qry).execute(&pool).await;
-//   pool.close().await;
-//   return result;
-// }
+// ============ New Database Commands ============
+
+#[tauri::command]
+fn db_create_patient(state: State<DbState>, patient: Patient) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_patient(&conn, &patient).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_all_patients(state: State<DbState>) -> Result<Vec<Patient>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_all_patients(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_patient(state: State<DbState>, id: i64) -> Result<Option<Patient>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_patient_by_id(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_create_appointment(state: State<DbState>, appointment: Appointment) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_appointment(&conn, &appointment).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_appointments_for_date(state: State<DbState>, date: String) -> Result<Vec<AppointmentWithPatient>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_appointments_for_date(&conn, &date).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_all_appointments(state: State<DbState>) -> Result<Vec<AppointmentWithPatient>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_all_appointments(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Check if we already have patients
+    let existing = db::get_all_patients(&conn).map_err(|e| e.to_string())?;
+    if !existing.is_empty() {
+        return Ok(format!("Database already has {} patients", existing.len()));
+    }
+
+    // Seed test patients
+    let test_patients = vec![
+        Patient {
+            id: None,
+            first_name: "Logan".to_string(),
+            last_name: "Nguyen".to_string(),
+            dob: "1998-09-15".to_string(),
+            sex: "M".to_string(),
+            gender: Some("M".to_string()),
+            address: Some("222 Main St. Detroit".to_string()),
+            phone: Some("555-555-5555".to_string()),
+            email: Some("logan@example.com".to_string()),
+        },
+        Patient {
+            id: None,
+            first_name: "Sarah".to_string(),
+            last_name: "Johnson".to_string(),
+            dob: "1985-03-22".to_string(),
+            sex: "F".to_string(),
+            gender: Some("F".to_string()),
+            address: Some("456 Oak Ave. Chicago".to_string()),
+            phone: Some("555-123-4567".to_string()),
+            email: Some("sarah.j@example.com".to_string()),
+        },
+        Patient {
+            id: None,
+            first_name: "Michael".to_string(),
+            last_name: "Chen".to_string(),
+            dob: "1990-07-10".to_string(),
+            sex: "M".to_string(),
+            gender: Some("M".to_string()),
+            address: Some("789 Pine Rd. Seattle".to_string()),
+            phone: Some("555-987-6543".to_string()),
+            email: Some("m.chen@example.com".to_string()),
+        },
+        Patient {
+            id: None,
+            first_name: "Emily".to_string(),
+            last_name: "Davis".to_string(),
+            dob: "1978-12-01".to_string(),
+            sex: "F".to_string(),
+            gender: Some("F".to_string()),
+            address: Some("321 Elm St. Boston".to_string()),
+            phone: Some("555-456-7890".to_string()),
+            email: Some("emily.d@example.com".to_string()),
+        },
+        Patient {
+            id: None,
+            first_name: "James".to_string(),
+            last_name: "Wilson".to_string(),
+            dob: "2000-05-18".to_string(),
+            sex: "M".to_string(),
+            gender: Some("NB".to_string()),
+            address: Some("654 Maple Dr. Austin".to_string()),
+            phone: Some("555-321-0987".to_string()),
+            email: Some("j.wilson@example.com".to_string()),
+        },
+    ];
+
+    let mut created = 0;
+    for patient in &test_patients {
+        db::create_patient(&conn, patient).map_err(|e| e.to_string())?;
+        created += 1;
+    }
+
+    Ok(format!("Seeded {} test patients", created))
+}

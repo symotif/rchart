@@ -11,19 +11,8 @@
 
 	// stores
 	import { SideBarStore, setTab } from '../stores/SideBarStore';
-	import { TabStore, ActiveTabStore, addTab, setActiveTab, removeTab } from '../stores/TabStore';
 
 	let { children }: { children: Snippet } = $props();
-
-	let newTabTitle: string = $state('New Tab');
-	// Add a new tab when called
-	function handleAddTab() {
-		const newTab = {
-			id: `tab-${Date.now()}`, // Generate a unique ID using timestamp
-			title: newTabTitle
-		};
-		addTab(newTab); // Call addTab to add the tab
-	}
 
 	const sideBarTabInfo = [
 		{ label: 'Dashboard', icon: 'fa-calendar-days', path: '/' },
@@ -62,7 +51,6 @@
 				<!-- notifications -->
 				<button
 					onclick={() => {
-						handleAddTab();
 						setTab(-1);
 					}}><i class="fa-solid fa-bell h-6 w-6 text-gray-500"></i></button
 				>

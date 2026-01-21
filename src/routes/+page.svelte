@@ -5,6 +5,79 @@
 	import Card from './card.svelte';
 	import Calendar from './calendar.svelte';
 
+	// Panel sizes (persisted in state)
+	let leftPanelWidth = $state(400);
+	let rightPanelWidth = $state(250);
+	let calendarHeight = $state(350);
+
+	// Resize state
+	let isResizingLeft = $state(false);
+	let isResizingRight = $state(false);
+	let isResizingCalendar = $state(false);
+
+	function startResizeLeft(e: MouseEvent) {
+		e.preventDefault();
+		isResizingLeft = true;
+		const startX = e.clientX;
+		const startWidth = leftPanelWidth;
+
+		function onMouseMove(e: MouseEvent) {
+			const delta = e.clientX - startX;
+			leftPanelWidth = Math.max(200, Math.min(800, startWidth + delta));
+		}
+
+		function onMouseUp() {
+			isResizingLeft = false;
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+		}
+
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
+	}
+
+	function startResizeRight(e: MouseEvent) {
+		e.preventDefault();
+		isResizingRight = true;
+		const startX = e.clientX;
+		const startWidth = rightPanelWidth;
+
+		function onMouseMove(e: MouseEvent) {
+			const delta = startX - e.clientX;
+			rightPanelWidth = Math.max(150, Math.min(500, startWidth + delta));
+		}
+
+		function onMouseUp() {
+			isResizingRight = false;
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+		}
+
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
+	}
+
+	function startResizeCalendar(e: MouseEvent) {
+		e.preventDefault();
+		isResizingCalendar = true;
+		const startY = e.clientY;
+		const startHeight = calendarHeight;
+
+		function onMouseMove(e: MouseEvent) {
+			const delta = e.clientY - startY;
+			calendarHeight = Math.max(200, Math.min(600, startHeight + delta));
+		}
+
+		function onMouseUp() {
+			isResizingCalendar = false;
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+		}
+
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
+	}
+
 	let appointments = $state([
 		{ name: 'Logan', age: '24', sex: 'Male', time: '12:30' },
 		{ name: 'John', age: '14', sex: 'Female', time: '1:30' },
@@ -196,11 +269,12 @@
 
 <!-- page content -->
 <div
-	class="absolute top-20 left-20 right-10 bottom-5 my-4 ml-5 mr-3 flex flex-row justify-between gap-5"
+	class="dashboard-container absolute top-20 left-20 right-10 bottom-5 my-4 ml-5 mr-3 flex flex-row"
+	class:resizing={isResizingLeft || isResizingRight || isResizingCalendar}
 >
-	<!-- appointments -->
-	<div class="bg-gray-50 rounded-lg shadow-l grow mt-5">
-		<div class="ml-5 mt-3">
+	<!-- LEFT PANEL: Schedule/Appointments -->
+	<div class="panel bg-gray-50 rounded-lg shadow-lg mt-5 overflow-auto" style="width: {leftPanelWidth}px; flex-shrink: 0;">
+		<div class="ml-5 mt-3 mr-3">
 			<p class="text-left font-bold text-3xl">Schedule</p>
 			<div>
 				<p>Dr. Madeline Chu, MD</p>
@@ -211,15 +285,25 @@
 			<div class="mb-3">
 				<Card data={appointment}></Card>
 			</div>
-				
 			{/each}
 		</div>
 	</div>
 
-	<div class="flex flex-col gap-5 w-1/3 mt-4">
-		<!-- calendar-->
-		<div class="bg-gray-50 rounded-lg shadow-xl h-2/4">
-			<div class="calendar-container">
+	<!-- LEFT RESIZE HANDLE -->
+	<div
+		class="resize-handle-vertical"
+		class:active={isResizingLeft}
+		onmousedown={startResizeLeft}
+		role="separator"
+		aria-orientation="vertical"
+		tabindex="0"
+	></div>
+
+	<!-- MIDDLE PANEL: Calendar + Stats -->
+	<div class="flex flex-col flex-1 min-w-0 mt-4 mx-2">
+		<!-- Calendar -->
+		<div class="panel bg-gray-50 rounded-lg shadow-xl overflow-auto" style="height: {calendarHeight}px; flex-shrink: 0;">
+			<div class="calendar-container p-3">
 				<div class="calendar-header">
 					<h1>
 						<button onclick={() => year--}>&Lt;</button>
@@ -229,7 +313,7 @@
 						<button onclick={() => next()}>&gt;</button>
 						<button onclick={() => year++}>&Gt;</button>
 					</h1>
-					{eventText}
+					<span class="text-sm text-gray-500">{eventText}</span>
 				</div>
 
 				<Calendar
@@ -241,52 +325,64 @@
 					onheaderClick={headerClick}
 				/>
 			</div>
-			<div class="ml-5 mt-3">
-				<h1 class="text-left">{month}</h1>
-				<p>
-					Lorem ipsum dolor sit, amet consectetur adipisicing elit. Vero suscipit quae
-					magni, nisi autem cupiditate necessitatibus molestias, delectus iste, mollitia
-					debitis repellendus! Modi, eius sit. Rerum praesentium error vero natus!
-				</p>
-			</div>
 		</div>
 
-		<!-- stats -->
-		<div class="bg-gray-50 rounded-lg shadow-xl grow">
-			<div class="ml-5 mt-3">
-				<h1 class="text-left">Work</h1>
-				<p>
-					patients per day, time spent with each patient, time spent charting, Large
-					average + small graph over the past X days
+		<!-- CALENDAR/STATS RESIZE HANDLE -->
+		<div
+			class="resize-handle-horizontal"
+			class:active={isResizingCalendar}
+			onmousedown={startResizeCalendar}
+			role="separator"
+			aria-orientation="horizontal"
+			tabindex="0"
+		></div>
+
+		<!-- Stats -->
+		<div class="panel bg-gray-50 rounded-lg shadow-xl flex-1 overflow-auto min-h-0">
+			<div class="ml-5 mt-3 mr-3">
+				<h1 class="text-left font-bold text-xl">Work</h1>
+				<p class="text-sm text-gray-600">
+					patients per day, time spent with each patient, time spent charting
 				</p>
 
-				<h1 class="text-left">Patients</h1>
-				<p>
-					total census, patients per day, time spent with each patient, time spent
-					charting, Large average + small graph over the past X days
+				<h1 class="text-left font-bold text-xl mt-3">Patients</h1>
+				<p class="text-sm text-gray-600">
+					total census, patients per day, time spent charting
 				</p>
 
-				<h1 class="text-left">Wellness</h1>
-				<p>
-					hours worked per day, time since last outside, time since last vacation, Large
-					average + small graph over the past X days
+				<h1 class="text-left font-bold text-xl mt-3">Wellness</h1>
+				<p class="text-sm text-gray-600">
+					hours worked per day, time since last outside
 				</p>
 
-				<h1 class="text-left">Finance</h1>
-				<p>daily burn, revenue Large average + small graph over the past X days</p>
+				<h1 class="text-left font-bold text-xl mt-3">Finance</h1>
+				<p class="text-sm text-gray-600">daily burn, revenue</p>
 			</div>
 		</div>
 	</div>
 
-	<!-- tasks -->
-	<div class="bg-gray-50 rounded-lg shadow-xl w-1/5 mt-4">
-		<div class="ml-5 mt-3">
-			<h1 class="text-left">My Tasks</h1>
-			<p>
-				Lorem ipsum dolor sit, amet consectetur adipisicing elit. Vero suscipit quae magni,
-				nisi autem cupiditate necessitatibus molestias, delectus iste, mollitia debitis
-				repellendus! Modi, eius sit. Rerum praesentium error vero natus!
+	<!-- RIGHT RESIZE HANDLE -->
+	<div
+		class="resize-handle-vertical"
+		class:active={isResizingRight}
+		onmousedown={startResizeRight}
+		role="separator"
+		aria-orientation="vertical"
+		tabindex="0"
+	></div>
+
+	<!-- RIGHT PANEL: Tasks -->
+	<div class="panel bg-gray-50 rounded-lg shadow-xl mt-4 overflow-auto" style="width: {rightPanelWidth}px; flex-shrink: 0;">
+		<div class="ml-5 mt-3 mr-3">
+			<h1 class="text-left font-bold text-xl">My Tasks</h1>
+			<p class="text-sm text-gray-600 mt-2">
+				Your pending tasks and action items will appear here.
 			</p>
+			<ul class="mt-3 space-y-2">
+				<li class="p-2 bg-blue-50 rounded text-sm">Review patient charts</li>
+				<li class="p-2 bg-yellow-50 rounded text-sm">Follow up with lab results</li>
+				<li class="p-2 bg-green-50 rounded text-sm">Complete documentation</li>
+			</ul>
 		</div>
 	</div>
 </div>
@@ -294,4 +390,54 @@
 <Greet />
 
 <style>
+	.dashboard-container {
+		gap: 0;
+	}
+
+	.dashboard-container.resizing {
+		user-select: none;
+		cursor: col-resize;
+	}
+
+	.panel {
+		position: relative;
+	}
+
+	.resize-handle-vertical {
+		width: 8px;
+		cursor: col-resize;
+		background: transparent;
+		transition: background-color 0.2s;
+		flex-shrink: 0;
+		z-index: 10;
+	}
+
+	.resize-handle-vertical:hover,
+	.resize-handle-vertical.active {
+		background: rgba(59, 130, 246, 0.4);
+	}
+
+	.resize-handle-horizontal {
+		height: 8px;
+		cursor: row-resize;
+		background: transparent;
+		transition: background-color 0.2s;
+		flex-shrink: 0;
+		z-index: 10;
+		margin: 2px 0;
+	}
+
+	.resize-handle-horizontal:hover,
+	.resize-handle-horizontal.active {
+		background: rgba(59, 130, 246, 0.4);
+	}
+
+	.calendar-container {
+		overflow: auto;
+	}
+
+	.calendar-header h1 {
+		font-size: 1.1rem;
+		text-align: center;
+	}
 </style>
