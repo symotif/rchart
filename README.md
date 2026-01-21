@@ -9,6 +9,15 @@
 
 <br />
 
+<p align="center">
+  <a href="#-vision">Vision</a> •
+  <a href="#-features">Features</a> •
+    <a href="#-tech-stack">Tech Stack</a> •
+  <a href="#-installation">Installation</a> •
+  <a href="#-contributing">Contributing</a> •
+  <a href="#-credits">Credits</a>
+</p>
+
 <div align="center">
   <img src="https://img.shields.io/badge/Version-0.1.0--alpha-blue?style=for-the-badge" alt="Version" />
   <img src="https://img.shields.io/badge/License-AGPL--3.0-orange?style=for-the-badge" alt="License" />
@@ -20,17 +29,6 @@
   <img src="https://img.shields.io/github/stars/your-username/rchart?style=flat-square&color=yellow" alt="Stars" />
 </div>
 
-<p align="center">
-  <a href="#-vision">Vision</a> •
-  <a href="#-features">Features</a> •
-    <a href="#-tech-stack">Tech Stack</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-contributing">Contributing</a> •
-  <a href="#-credits">Credits</a>
-</p>
-
----
-
 ## 🌟 Vision
 **rchart** is a community-driven Electronic Health Record (EHR) system designed to run anywhere—Windows, MacOS, and Linux. As a project, rchart strives to be: fast, intuitive, secure, and extensible via community developed plugins!
 
@@ -38,8 +36,6 @@
 * **Physician-Centered:** Workflows designed for speed and efficiency with clinicans in mind, not billing codes
 * **Offline-First:** Built-in local database -- not everyone has a constant 5G connection
 * **Global:** Multilanguage support for healthcare workers everywhere
-
----
 
 ## ✨ Features
 
@@ -62,8 +58,6 @@
 > [!TIP]
 > **Roadmap:** See our full 22-point roadmap in the [Wiki](#) (Auth, Billing, Chat, and more).
 
----
-
 ## 🛠 Tech Stack
 
 | Component | Technology | Description |
@@ -72,8 +66,6 @@
 | **Shell** | [Tauri](https://tauri.app/) | Secure, tiny binaries using the system's native webview. |
 | **Database** | [SQLite](https://sqlite.org/) | Encrypted-at-rest local storage |
 | **Logic** | [Rust](https://www.rust-lang.org/) | Memory-safe backend for handling sensitive PHI |
-
----
 
 ## 🚀 Installation
 
@@ -96,7 +88,6 @@ yarn install
 # Run in development mode
 yarn tauri dev
 ```
----
 
 ## 🤝 Contributing
 We can use a lot of help. We need those that can code, help support languages, create art, and manage the project! 
@@ -110,9 +101,7 @@ Please utilize forks and pull requests to contribute. The default development br
 - Core Team: Logan Nguyen -- just me so far!
 - Contributors: none so far!
 
----
-
-# README TODO
+## README To Do
 - [ ] add pictures off the app
 - [ ] create a logo
 - [ ] more badges
