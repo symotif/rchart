@@ -6,7 +6,7 @@
 
 mod db;
 
-use db::{DbState, Patient, Appointment, AppointmentWithPatient};
+use db::{DbState, Patient, Appointment, AppointmentWithPatient, PatientFullData, Encounter};
 use serde::{Deserialize, Serialize};
 use tauri::{State, Manager};
 use std::sync::Mutex;
@@ -57,6 +57,10 @@ fn main() {
             db_get_appointments_for_date,
             db_get_all_appointments,
             db_seed_test_data,
+            // Patient detail page commands
+            db_get_patient_full,
+            db_get_encounter,
+            db_seed_patient_detail_test_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -158,6 +162,8 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             address: Some("222 Main St. Detroit".to_string()),
             phone: Some("555-555-5555".to_string()),
             email: Some("logan@example.com".to_string()),
+            photo_url: None,
+            ai_summary: None,
         },
         Patient {
             id: None,
@@ -169,6 +175,8 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             address: Some("456 Oak Ave. Chicago".to_string()),
             phone: Some("555-123-4567".to_string()),
             email: Some("sarah.j@example.com".to_string()),
+            photo_url: None,
+            ai_summary: None,
         },
         Patient {
             id: None,
@@ -180,6 +188,8 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             address: Some("789 Pine Rd. Seattle".to_string()),
             phone: Some("555-987-6543".to_string()),
             email: Some("m.chen@example.com".to_string()),
+            photo_url: None,
+            ai_summary: None,
         },
         Patient {
             id: None,
@@ -191,6 +201,8 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             address: Some("321 Elm St. Boston".to_string()),
             phone: Some("555-456-7890".to_string()),
             email: Some("emily.d@example.com".to_string()),
+            photo_url: None,
+            ai_summary: None,
         },
         Patient {
             id: None,
@@ -202,6 +214,8 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             address: Some("654 Maple Dr. Austin".to_string()),
             phone: Some("555-321-0987".to_string()),
             email: Some("j.wilson@example.com".to_string()),
+            photo_url: None,
+            ai_summary: None,
         },
     ];
 
@@ -212,4 +226,25 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
     }
 
     Ok(format!("Seeded {} test patients", created))
+}
+
+// ============ Patient Detail Page Commands ============
+
+#[tauri::command]
+fn db_get_patient_full(state: State<DbState>, id: i64) -> Result<Option<PatientFullData>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_patient_full_data(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_encounter(state: State<DbState>, encounter_id: i64) -> Result<Option<Encounter>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_encounter_by_id(&conn, encounter_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_seed_patient_detail_test_data(state: State<DbState>, patient_id: i64) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::seed_patient_detail_test_data(&conn, patient_id).map_err(|e| e.to_string())?;
+    Ok(format!("Seeded detail data for patient {}", patient_id))
 }

@@ -4,45 +4,32 @@
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { setActiveTab } from '../../../stores/TabStore';
 
-	interface Patient {
-		id: number | null;
-		first_name: string;
-		last_name: string;
-		dob: string;
-		sex: string;
-		gender: string | null;
-		address: string | null;
-		phone: string | null;
-		email: string | null;
-	}
+	// Import components
+	import PatientSummary from '$lib/components/patient/PatientSummary.svelte';
+	import DiagnosisMedications from '$lib/components/patient/DiagnosisMedications.svelte';
+	import VitalsLabsScores from '$lib/components/patient/VitalsLabsScores.svelte';
+	import EncountersList from '$lib/components/patient/EncountersList.svelte';
+	import Histories from '$lib/components/patient/Histories.svelte';
+	import TodosGoals from '$lib/components/patient/TodosGoals.svelte';
+	import Timeline from '$lib/components/patient/Timeline.svelte';
 
-	let patient = $state<Patient | null>(null);
+	import type { PatientFullData } from '$lib/types/patient';
+
+	let patientData = $state<PatientFullData | null>(null);
 	let loading = $state(true);
 	let error = $state('');
 
-	function calculateAge(dob: string): number {
-		const birthDate = new Date(dob);
-		const today = new Date();
-		let age = today.getFullYear() - birthDate.getFullYear();
-		const monthDiff = today.getMonth() - birthDate.getMonth();
-		if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-			age--;
-		}
-		return age;
-	}
-
-	function formatDob(dob: string): string {
-		const date = new Date(dob);
-		return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-	}
-
-	async function loadPatient(id: string) {
+	async function loadPatientData(id: string) {
 		try {
 			loading = true;
 			error = '';
 			const patientId = parseInt(id, 10);
-			const result = await invoke<Patient | null>('db_get_patient', { id: patientId });
-			patient = result;
+
+			// First seed the detail test data for this patient
+			await invoke<string>('db_seed_patient_detail_test_data', { patientId });
+
+			// Then fetch the full patient data
+			patientData = await invoke<PatientFullData | null>('db_get_patient_full', { id: patientId });
 
 			// Set this tab as active
 			setActiveTab(`patient-${id}`);
@@ -57,85 +44,82 @@
 	onMount(() => {
 		const id = $page.params.id;
 		if (id) {
-			loadPatient(id);
+			loadPatientData(id);
 		}
 	});
+
+	// Get diagnoses array for TodosGoals
+	const diagnosesArray = $derived(patientData?.diagnoses.map((d) => d.diagnosis) ?? []);
 </script>
 
-<div class="absolute left-20 top-20 right-10 bottom-5 mx-5 my-8">
+<div class="absolute left-20 top-20 right-0 bottom-0 p-4 overflow-auto">
 	{#if loading}
-		<div class="text-gray-600">Loading patient...</div>
+		<div class="flex items-center justify-center h-full">
+			<div class="text-gray-600 dark:text-gray-400">
+				<i class="fa-solid fa-spinner fa-spin mr-2"></i>
+				Loading patient data...
+			</div>
+		</div>
 	{:else if error}
-		<div class="text-red-600">Error: {error}</div>
-	{:else if patient}
-		<div class="bg-white rounded-lg shadow-lg p-6">
-			<div class="border-b pb-4 mb-4">
-				<h1 class="text-3xl font-bold text-gray-800">
-					{patient.first_name} {patient.last_name}
-				</h1>
-				<p class="text-gray-500">Patient ID: {patient.id?.toString().padStart(3, '0')}</p>
+		<div class="flex items-center justify-center h-full">
+			<div class="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
+				<i class="fa-solid fa-exclamation-circle mr-2"></i>
+				Error: {error}
+			</div>
+		</div>
+	{:else if patientData}
+		<!-- Grid Layout -->
+		<div class="grid grid-cols-3 gap-4 min-h-full" style="grid-template-rows: minmax(200px, 1fr) minmax(250px, 1.2fr) 200px;">
+			<!-- Row 1: Summary, Dx/Meds, Vitals/Labs -->
+			<div class="col-span-1">
+				<PatientSummary patient={patientData.patient} />
+			</div>
+			<div class="col-span-1">
+				<DiagnosisMedications
+					diagnoses={patientData.diagnoses}
+					medications={patientData.medications}
+				/>
+			</div>
+			<div class="col-span-1">
+				<VitalsLabsScores
+					vitals={patientData.vitals}
+					labs={patientData.labs}
+					scores={patientData.clinical_scores}
+				/>
 			</div>
 
-			<div class="grid grid-cols-2 gap-6">
-				<div class="space-y-4">
-					<h2 class="text-xl font-semibold text-gray-700">Demographics</h2>
-
-					<div class="grid grid-cols-2 gap-4">
-						<div>
-							<label class="text-sm text-gray-500">Date of Birth</label>
-							<p class="text-gray-800">{formatDob(patient.dob)}</p>
-						</div>
-						<div>
-							<label class="text-sm text-gray-500">Age</label>
-							<p class="text-gray-800">{calculateAge(patient.dob)} years</p>
-						</div>
-						<div>
-							<label class="text-sm text-gray-500">Sex</label>
-							<p class="text-gray-800">{patient.sex}</p>
-						</div>
-						<div>
-							<label class="text-sm text-gray-500">Gender</label>
-							<p class="text-gray-800">{patient.gender ?? '-'}</p>
-						</div>
-					</div>
-				</div>
-
-				<div class="space-y-4">
-					<h2 class="text-xl font-semibold text-gray-700">Contact Information</h2>
-
-					<div class="space-y-3">
-						<div>
-							<label class="text-sm text-gray-500">Address</label>
-							<p class="text-gray-800">{patient.address ?? '-'}</p>
-						</div>
-						<div>
-							<label class="text-sm text-gray-500">Phone</label>
-							<p class="text-gray-800">{patient.phone ?? '-'}</p>
-						</div>
-						<div>
-							<label class="text-sm text-gray-500">Email</label>
-							<p class="text-gray-800">{patient.email ?? '-'}</p>
-						</div>
-					</div>
-				</div>
+			<!-- Row 2: Encounters, Histories, To-Dos/Goals -->
+			<div class="col-span-1">
+				<EncountersList
+					encounters={patientData.encounters}
+					patientId={patientData.patient.id ?? 0}
+					patientName="{patientData.patient.first_name} {patientData.patient.last_name}"
+				/>
+			</div>
+			<div class="col-span-1">
+				<Histories
+					allergies={patientData.allergies}
+					vaccinations={patientData.vaccinations}
+					socialHistory={patientData.social_history}
+					familyHistory={patientData.family_history}
+				/>
+			</div>
+			<div class="col-span-1">
+				<TodosGoals
+					todos={patientData.todos}
+					goals={patientData.goals}
+					diagnoses={diagnosesArray}
+				/>
 			</div>
 
-			<div class="mt-8 pt-4 border-t">
-				<h2 class="text-xl font-semibold text-gray-700 mb-4">Quick Actions</h2>
-				<div class="flex gap-3">
-					<button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
-						New Appointment
-					</button>
-					<button class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
-						Add Note
-					</button>
-					<button class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors">
-						View History
-					</button>
-				</div>
+			<!-- Row 3: Timeline (full width) -->
+			<div class="col-span-3">
+				<Timeline events={patientData.timeline_events} />
 			</div>
 		</div>
 	{:else}
-		<div class="text-gray-600">Patient not found</div>
+		<div class="flex items-center justify-center h-full">
+			<div class="text-gray-600 dark:text-gray-400">Patient not found</div>
+		</div>
 	{/if}
 </div>
