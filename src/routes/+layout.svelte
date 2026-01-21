@@ -13,6 +13,13 @@
 	// stores
 	import { SideBarStore, setTab } from '../stores/SideBarStore';
 	import { ThemeStore } from '../stores/ThemeStore';
+	import { TabStore } from '../stores/TabStore';
+
+	// App version
+	const appVersion = '0.0.1';
+
+	// Check if there are no tabs
+	let hasTabs = $derived($TabStore.length > 0);
 
 	// Apply theme class on mount and when theme changes
 	onMount(() => {
@@ -113,7 +120,14 @@
 
 	<!-- page contents -->
 	<main>
-		{@render children()}
+		{#if hasTabs}
+			{@render children()}
+		{:else}
+			<!-- No tabs - show version screen -->
+			<div class="absolute inset-0 left-20 top-20 flex items-center justify-center">
+				<p class="text-gray-400 dark:text-gray-500 text-lg font-light">rchart version {appVersion}</p>
+			</div>
+		{/if}
 	</main>
 
 	<!-- message center -->

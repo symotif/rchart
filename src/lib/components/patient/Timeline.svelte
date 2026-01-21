@@ -71,41 +71,44 @@
 		<p class="text-sm text-gray-500 dark:text-gray-400 italic">No timeline events recorded</p>
 	{:else}
 		<div class="overflow-x-auto pb-2">
-			<div class="flex gap-4 min-w-max">
-				{#each sortedEvents as event, index}
-					<div class="flex-shrink-0 w-48 relative">
-						<!-- Date marker -->
-						<div class="text-xs text-gray-500 dark:text-gray-400 mb-2 font-medium">
-							{formatDate(event.event_date)}
-						</div>
+			<div class="relative">
+				<!-- Prominent timeline line -->
+				<div class="absolute top-6 left-0 right-0 h-1 bg-gradient-to-r from-indigo-300 via-indigo-400 to-indigo-300 dark:from-indigo-600 dark:via-indigo-500 dark:to-indigo-600 rounded-full" style="margin-left: 24px; margin-right: 24px;"></div>
 
-						<!-- Event card -->
-						<div
-							class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border-l-4 {getBorderColor(event.event_type, event.color)} min-h-[80px]"
-						>
-							<div class="flex items-center gap-2 mb-2">
-								<span
-									class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs {getEventColor(event.event_type, event.color)}"
-								>
-									<i class="fa-solid {getEventIcon(event.event_type, event.icon)}"></i>
-								</span>
-								<span class="text-xs font-medium text-gray-600 dark:text-gray-300 capitalize">
-									{event.event_type.replace(/_/g, ' ')}
-								</span>
+				<div class="flex gap-4 min-w-max relative">
+					{#each sortedEvents as event, index}
+						<div class="flex-shrink-0 w-48 relative">
+							<!-- Date marker with circle on the line -->
+							<div class="text-xs text-gray-500 dark:text-gray-400 mb-1 font-medium text-center">
+								{formatDate(event.event_date)}
 							</div>
-							<p class="text-sm text-gray-700 dark:text-gray-200">
-								{event.description}
-							</p>
-						</div>
 
-						<!-- Timeline connector -->
-						{#if index < sortedEvents.length - 1}
+							<!-- Circle marker on the timeline line -->
+							<div class="flex justify-center mb-3">
+								<div class="w-3 h-3 rounded-full bg-indigo-500 dark:bg-indigo-400 border-2 border-white dark:border-gray-800 shadow-sm z-10"></div>
+							</div>
+
+							<!-- Event card -->
 							<div
-								class="absolute top-10 -right-2 w-4 h-0.5 bg-gray-300 dark:bg-gray-600"
-							></div>
-						{/if}
-					</div>
-				{/each}
+								class="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border-l-4 {getBorderColor(event.event_type, event.color)} min-h-[80px]"
+							>
+								<div class="flex items-center gap-2 mb-2">
+									<span
+										class="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs {getEventColor(event.event_type, event.color)}"
+									>
+										<i class="fa-solid {getEventIcon(event.event_type, event.icon)}"></i>
+									</span>
+									<span class="text-xs font-medium text-gray-600 dark:text-gray-300 capitalize">
+										{event.event_type.replace(/_/g, ' ')}
+									</span>
+								</div>
+								<p class="text-sm text-gray-700 dark:text-gray-200">
+									{event.description}
+								</p>
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 		</div>
 	{/if}

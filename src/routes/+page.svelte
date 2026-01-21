@@ -6,7 +6,7 @@
 	import Calendar from './calendar.svelte';
 
 	// Panel sizes (persisted in state)
-	let leftPanelWidth = $state(400);
+	let leftPanelWidth = $state(480);
 	let rightPanelWidth = $state(250);
 	let calendarHeight = $state(350);
 
@@ -269,20 +269,20 @@
 
 <!-- page content -->
 <div
-	class="dashboard-container absolute top-20 left-20 right-10 bottom-5 my-4 ml-5 mr-3 flex flex-row"
+	class="dashboard-container absolute top-20 left-20 right-10 bottom-10 my-4 ml-5 mr-3 flex flex-row"
 	class:resizing={isResizingLeft || isResizingRight || isResizingCalendar}
 >
 	<!-- LEFT PANEL: Schedule/Appointments -->
-	<div class="panel bg-gray-50 rounded-lg shadow-lg mt-5 overflow-auto" style="width: {leftPanelWidth}px; flex-shrink: 0;">
+	<div class="panel bg-gray-50 dark:bg-gray-800 rounded-lg shadow-lg mt-5 overflow-auto" style="width: {leftPanelWidth}px; flex-shrink: 0;">
 		<div class="ml-5 mt-3 mr-3">
-			<p class="text-left font-bold text-3xl">Schedule</p>
+			<p class="text-left font-bold text-3xl text-gray-800 dark:text-gray-100">Schedule</p>
 			<div>
-				<p>Dr. Madeline Chu, MD</p>
-				<p class="mt-5 mb-1 font-bold text-lg">Wednesday 9/15</p>
+				<p class="text-gray-700 dark:text-gray-300">Dr. Madeline Chu, MD</p>
+				<p class="mt-5 mb-1 font-bold text-lg text-gray-800 dark:text-gray-100">Wednesday 9/15</p>
 			</div>
 
 			{#each appointments as appointment}
-			<div class="mb-3">
+			<div class="mb-3 flex-shrink-0">
 				<Card data={appointment}></Card>
 			</div>
 			{/each}
@@ -302,18 +302,18 @@
 	<!-- MIDDLE PANEL: Calendar + Stats -->
 	<div class="flex flex-col flex-1 min-w-0 mt-4 mx-2">
 		<!-- Calendar -->
-		<div class="panel bg-gray-50 rounded-lg shadow-xl overflow-auto" style="height: {calendarHeight}px; flex-shrink: 0;">
+		<div class="panel bg-gray-50 dark:bg-gray-800 rounded-lg shadow-xl overflow-auto" style="height: {calendarHeight}px; flex-shrink: 0;">
 			<div class="calendar-container p-3">
 				<div class="calendar-header">
-					<h1>
-						<button onclick={() => year--}>&Lt;</button>
-						<button onclick={() => prev()}>&lt;</button>
+					<h1 class="text-gray-800 dark:text-gray-100">
+						<button onclick={() => year--} class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">&Lt;</button>
+						<button onclick={() => prev()} class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">&lt;</button>
 						{monthNames[month]}
 						{year}
-						<button onclick={() => next()}>&gt;</button>
-						<button onclick={() => year++}>&Gt;</button>
+						<button onclick={() => next()} class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">&gt;</button>
+						<button onclick={() => year++} class="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">&Gt;</button>
 					</h1>
-					<span class="text-sm text-gray-500">{eventText}</span>
+					<span class="text-sm text-gray-500 dark:text-gray-400">{eventText}</span>
 				</div>
 
 				<Calendar
@@ -338,25 +338,25 @@
 		></div>
 
 		<!-- Stats -->
-		<div class="panel bg-gray-50 rounded-lg shadow-xl flex-1 overflow-auto min-h-0">
+		<div class="panel bg-gray-50 dark:bg-gray-800 rounded-lg shadow-xl flex-1 overflow-auto min-h-0">
 			<div class="ml-5 mt-3 mr-3">
-				<h1 class="text-left font-bold text-xl">Work</h1>
-				<p class="text-sm text-gray-600">
+				<h1 class="text-left font-bold text-xl text-gray-800 dark:text-gray-100">Work</h1>
+				<p class="text-sm text-gray-600 dark:text-gray-400">
 					patients per day, time spent with each patient, time spent charting
 				</p>
 
-				<h1 class="text-left font-bold text-xl mt-3">Patients</h1>
-				<p class="text-sm text-gray-600">
+				<h1 class="text-left font-bold text-xl mt-3 text-gray-800 dark:text-gray-100">Patients</h1>
+				<p class="text-sm text-gray-600 dark:text-gray-400">
 					total census, patients per day, time spent charting
 				</p>
 
-				<h1 class="text-left font-bold text-xl mt-3">Wellness</h1>
-				<p class="text-sm text-gray-600">
+				<h1 class="text-left font-bold text-xl mt-3 text-gray-800 dark:text-gray-100">Wellness</h1>
+				<p class="text-sm text-gray-600 dark:text-gray-400">
 					hours worked per day, time since last outside
 				</p>
 
-				<h1 class="text-left font-bold text-xl mt-3">Finance</h1>
-				<p class="text-sm text-gray-600">daily burn, revenue</p>
+				<h1 class="text-left font-bold text-xl mt-3 text-gray-800 dark:text-gray-100">Finance</h1>
+				<p class="text-sm text-gray-600 dark:text-gray-400">daily burn, revenue</p>
 			</div>
 		</div>
 	</div>
@@ -372,16 +372,16 @@
 	></div>
 
 	<!-- RIGHT PANEL: Tasks -->
-	<div class="panel bg-gray-50 rounded-lg shadow-xl mt-4 overflow-auto" style="width: {rightPanelWidth}px; flex-shrink: 0;">
+	<div class="panel bg-gray-50 dark:bg-gray-800 rounded-lg shadow-xl mt-4 overflow-auto" style="width: {rightPanelWidth}px; flex-shrink: 0;">
 		<div class="ml-5 mt-3 mr-3">
-			<h1 class="text-left font-bold text-xl">My Tasks</h1>
-			<p class="text-sm text-gray-600 mt-2">
+			<h1 class="text-left font-bold text-xl text-gray-800 dark:text-gray-100">My Tasks</h1>
+			<p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
 				Your pending tasks and action items will appear here.
 			</p>
 			<ul class="mt-3 space-y-2">
-				<li class="p-2 bg-blue-50 rounded text-sm">Review patient charts</li>
-				<li class="p-2 bg-yellow-50 rounded text-sm">Follow up with lab results</li>
-				<li class="p-2 bg-green-50 rounded text-sm">Complete documentation</li>
+				<li class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded text-sm text-gray-700 dark:text-gray-300">Review patient charts</li>
+				<li class="p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded text-sm text-gray-700 dark:text-gray-300">Follow up with lab results</li>
+				<li class="p-2 bg-green-50 dark:bg-green-900/30 rounded text-sm text-gray-700 dark:text-gray-300">Complete documentation</li>
 			</ul>
 		</div>
 	</div>

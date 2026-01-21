@@ -25,8 +25,8 @@
 			error = '';
 			const patientId = parseInt(id, 10);
 
-			// First seed the detail test data for this patient
-			await invoke<string>('db_seed_patient_detail_test_data', { patientId });
+			// Seed test data only if it doesn't already exist (no force reseed for performance)
+			await invoke<string>('db_seed_patient_detail_test_data', { patientId, forceReseed: false });
 
 			// Then fetch the full patient data
 			patientData = await invoke<PatientFullData | null>('db_get_patient_full', { id: patientId });
@@ -41,9 +41,14 @@
 		}
 	}
 
-	onMount(() => {
+	// Track the current patient ID to detect changes
+	let currentPatientId = $state<string | null>(null);
+
+	// Watch for URL param changes (when switching between patient tabs)
+	$effect(() => {
 		const id = $page.params.id;
-		if (id) {
+		if (id && id !== currentPatientId) {
+			currentPatientId = id;
 			loadPatientData(id);
 		}
 	});
@@ -52,7 +57,7 @@
 	const diagnosesArray = $derived(patientData?.diagnoses.map((d) => d.diagnosis) ?? []);
 </script>
 
-<div class="absolute left-20 top-20 right-0 bottom-0 p-4 overflow-auto">
+<div class="absolute top-20 left-20 right-10 bottom-10 my-4 ml-5 mr-3 overflow-auto">
 	{#if loading}
 		<div class="flex items-center justify-center h-full">
 			<div class="text-gray-600 dark:text-gray-400">
@@ -68,12 +73,18 @@
 			</div>
 		</div>
 	{:else if patientData}
-		<!-- Grid Layout -->
-		<div class="grid grid-cols-3 gap-4 min-h-full" style="grid-template-rows: minmax(200px, 1fr) minmax(250px, 1.2fr) 200px;">
-			<!-- Row 1: Summary, Dx/Meds, Vitals/Labs -->
-			<div class="col-span-1">
-				<PatientSummary patient={patientData.patient} />
+		<!-- Grid Layout: 4 rows -->
+		<!-- Row 1: Summary (full width, horizontal) -->
+		<!-- Row 2: Dx/Meds, Vitals/Labs, Todos (top half) -->
+		<!-- Row 3: Encounters, Histories, Todos (bottom half) -->
+		<!-- Row 4: Timeline (full width) -->
+		<div class="grid grid-cols-3 gap-4 min-h-full" style="grid-template-rows: auto minmax(200px, 1fr) minmax(200px, 1fr) 200px;">
+			<!-- Row 1: Summary (full width, horizontal layout) -->
+			<div class="col-span-3">
+				<PatientSummary patient={patientData.patient} diagnoses={patientData.diagnoses} scores={patientData.clinical_scores} />
 			</div>
+
+			<!-- Row 2: Dx/Meds, Vitals/Labs, Todos (start) -->
 			<div class="col-span-1">
 				<DiagnosisMedications
 					diagnoses={patientData.diagnoses}
@@ -87,8 +98,15 @@
 					scores={patientData.clinical_scores}
 				/>
 			</div>
+			<div class="col-span-1 row-span-2">
+				<TodosGoals
+					todos={patientData.todos}
+					goals={patientData.goals}
+					diagnoses={diagnosesArray}
+				/>
+			</div>
 
-			<!-- Row 2: Encounters, Histories, To-Dos/Goals -->
+			<!-- Row 3: Encounters, Histories (Todos spans from row 2) -->
 			<div class="col-span-1">
 				<EncountersList
 					encounters={patientData.encounters}
@@ -104,15 +122,8 @@
 					familyHistory={patientData.family_history}
 				/>
 			</div>
-			<div class="col-span-1">
-				<TodosGoals
-					todos={patientData.todos}
-					goals={patientData.goals}
-					diagnoses={diagnosesArray}
-				/>
-			</div>
 
-			<!-- Row 3: Timeline (full width) -->
+			<!-- Row 4: Timeline (full width) -->
 			<div class="col-span-3">
 				<Timeline events={patientData.timeline_events} />
 			</div>

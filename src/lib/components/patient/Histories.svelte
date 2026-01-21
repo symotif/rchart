@@ -36,7 +36,7 @@
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 h-full flex flex-col">
 	<h3 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
 		<i class="fa-solid fa-clipboard-list text-green-500"></i>
-		History
+		Histories
 	</h3>
 
 	<div class="flex-1 overflow-y-auto">

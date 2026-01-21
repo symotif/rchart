@@ -60,7 +60,7 @@
 	});
 </script>
 
-<div class="absolute left-20 top-20 right-0 bottom-0 p-4 overflow-auto">
+<div class="absolute top-20 left-20 right-10 bottom-10 my-4 ml-5 mr-3 overflow-auto">
 	{#if loading}
 		<div class="flex items-center justify-center h-full">
 			<div class="text-gray-600 dark:text-gray-400">

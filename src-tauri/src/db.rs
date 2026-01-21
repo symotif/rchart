@@ -54,6 +54,10 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             email TEXT,
             photo_url TEXT,
             ai_summary TEXT,
+            preferred_pharmacy TEXT,
+            insurance_provider TEXT,
+            insurance_policy_number TEXT,
+            insurance_group_number TEXT,
             created_at TEXT DEFAULT (datetime('now', 'localtime')),
             updated_at TEXT DEFAULT (datetime('now', 'localtime'))
         );
@@ -91,6 +95,7 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             icd_code TEXT,
             onset_date TEXT,
             status TEXT DEFAULT 'active',
+            category TEXT,
             created_at TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
         );
@@ -292,6 +297,25 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
         let _ = conn.execute("ALTER TABLE patients ADD COLUMN ai_summary TEXT", []);
     }
 
+    // Add pharmacy/insurance columns to patients table if they don't exist
+    let has_pharmacy: bool = conn
+        .prepare("SELECT preferred_pharmacy FROM patients LIMIT 1")
+        .is_ok();
+    if !has_pharmacy {
+        let _ = conn.execute("ALTER TABLE patients ADD COLUMN preferred_pharmacy TEXT", []);
+        let _ = conn.execute("ALTER TABLE patients ADD COLUMN insurance_provider TEXT", []);
+        let _ = conn.execute("ALTER TABLE patients ADD COLUMN insurance_policy_number TEXT", []);
+        let _ = conn.execute("ALTER TABLE patients ADD COLUMN insurance_group_number TEXT", []);
+    }
+
+    // Add category column to diagnoses table if it doesn't exist
+    let has_category: bool = conn
+        .prepare("SELECT category FROM diagnoses LIMIT 1")
+        .is_ok();
+    if !has_category {
+        let _ = conn.execute("ALTER TABLE diagnoses ADD COLUMN category TEXT", []);
+    }
+
     Ok(conn)
 }
 
@@ -312,6 +336,10 @@ pub struct Patient {
     pub email: Option<String>,
     pub photo_url: Option<String>,
     pub ai_summary: Option<String>,
+    pub preferred_pharmacy: Option<String>,
+    pub insurance_provider: Option<String>,
+    pub insurance_policy_number: Option<String>,
+    pub insurance_group_number: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -346,6 +374,7 @@ pub struct Diagnosis {
     pub icd_code: Option<String>,
     pub onset_date: Option<String>,
     pub status: Option<String>,
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -502,8 +531,8 @@ pub struct PatientFullData {
 
 pub fn create_patient(conn: &Connection, patient: &Patient) -> Result<i64> {
     conn.execute(
-        "INSERT INTO patients (first_name, last_name, dob, sex, gender, address, phone, email)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO patients (first_name, last_name, dob, sex, gender, address, phone, email, preferred_pharmacy, insurance_provider, insurance_policy_number, insurance_group_number)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
         params![
             patient.first_name,
             patient.last_name,
@@ -513,6 +542,10 @@ pub fn create_patient(conn: &Connection, patient: &Patient) -> Result<i64> {
             patient.address,
             patient.phone,
             patient.email,
+            patient.preferred_pharmacy,
+            patient.insurance_provider,
+            patient.insurance_policy_number,
+            patient.insurance_group_number,
         ],
     )?;
     Ok(conn.last_insert_rowid())
@@ -520,7 +553,7 @@ pub fn create_patient(conn: &Connection, patient: &Patient) -> Result<i64> {
 
 pub fn get_all_patients(conn: &Connection) -> Result<Vec<Patient>> {
     let mut stmt = conn.prepare(
-        "SELECT id, first_name, last_name, dob, sex, gender, address, phone, email, photo_url, ai_summary FROM patients"
+        "SELECT id, first_name, last_name, dob, sex, gender, address, phone, email, photo_url, ai_summary, preferred_pharmacy, insurance_provider, insurance_policy_number, insurance_group_number FROM patients"
     )?;
 
     let patients = stmt.query_map([], |row| {
@@ -536,6 +569,10 @@ pub fn get_all_patients(conn: &Connection) -> Result<Vec<Patient>> {
             email: row.get(8)?,
             photo_url: row.get(9)?,
             ai_summary: row.get(10)?,
+            preferred_pharmacy: row.get(11)?,
+            insurance_provider: row.get(12)?,
+            insurance_policy_number: row.get(13)?,
+            insurance_group_number: row.get(14)?,
         })
     })?;
 
@@ -544,7 +581,7 @@ pub fn get_all_patients(conn: &Connection) -> Result<Vec<Patient>> {
 
 pub fn get_patient_by_id(conn: &Connection, id: i64) -> Result<Option<Patient>> {
     let mut stmt = conn.prepare(
-        "SELECT id, first_name, last_name, dob, sex, gender, address, phone, email, photo_url, ai_summary
+        "SELECT id, first_name, last_name, dob, sex, gender, address, phone, email, photo_url, ai_summary, preferred_pharmacy, insurance_provider, insurance_policy_number, insurance_group_number
          FROM patients WHERE id = ?1"
     )?;
 
@@ -563,6 +600,10 @@ pub fn get_patient_by_id(conn: &Connection, id: i64) -> Result<Option<Patient>> 
             email: row.get(8)?,
             photo_url: row.get(9)?,
             ai_summary: row.get(10)?,
+            preferred_pharmacy: row.get(11)?,
+            insurance_provider: row.get(12)?,
+            insurance_policy_number: row.get(13)?,
+            insurance_group_number: row.get(14)?,
         }))
     } else {
         Ok(None)
@@ -706,7 +747,7 @@ pub fn get_patient_full_data(conn: &Connection, patient_id: i64) -> Result<Optio
 
 pub fn get_diagnoses_for_patient(conn: &Connection, patient_id: i64) -> Result<Vec<Diagnosis>> {
     let mut stmt = conn.prepare(
-        "SELECT id, patient_id, name, icd_code, onset_date, status
+        "SELECT id, patient_id, name, icd_code, onset_date, status, category
          FROM diagnoses WHERE patient_id = ?1 AND status = 'active'
          ORDER BY onset_date DESC"
     )?;
@@ -719,6 +760,7 @@ pub fn get_diagnoses_for_patient(conn: &Connection, patient_id: i64) -> Result<V
             icd_code: row.get(3)?,
             onset_date: row.get(4)?,
             status: row.get(5)?,
+            category: row.get(6)?,
         })
     })?;
 
@@ -1055,9 +1097,30 @@ pub fn get_timeline_events_for_patient(conn: &Connection, patient_id: i64) -> Re
     events.collect()
 }
 
+// ============ Clear Patient Detail Data ============
+
+pub fn clear_patient_detail_data(conn: &Connection, patient_id: i64) -> Result<()> {
+    // Delete all related data for this patient to allow reseeding
+    conn.execute("DELETE FROM diagnosis_medications WHERE diagnosis_id IN (SELECT id FROM diagnoses WHERE patient_id = ?1)", params![patient_id])?;
+    conn.execute("DELETE FROM diagnoses WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM medications WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM vitals WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM labs WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM clinical_scores WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM encounters WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM allergies WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM vaccinations WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM social_history WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM family_history WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM todos WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM goals WHERE patient_id = ?1", params![patient_id])?;
+    conn.execute("DELETE FROM timeline_events WHERE patient_id = ?1", params![patient_id])?;
+    Ok(())
+}
+
 // ============ Seed Patient Detail Test Data ============
 
-pub fn seed_patient_detail_test_data(conn: &Connection, patient_id: i64) -> Result<()> {
+pub fn seed_patient_detail_test_data(conn: &Connection, patient_id: i64, force_reseed: bool) -> Result<()> {
     // Check if data already exists for this patient
     let count: i64 = conn.query_row(
         "SELECT COUNT(*) FROM diagnoses WHERE patient_id = ?1",
@@ -1066,36 +1129,48 @@ pub fn seed_patient_detail_test_data(conn: &Connection, patient_id: i64) -> Resu
     )?;
 
     if count > 0 {
-        return Ok(()); // Already seeded
+        if force_reseed {
+            // Clear existing data first
+            clear_patient_detail_data(conn, patient_id)?;
+        } else {
+            return Ok(()); // Already seeded
+        }
     }
 
-    // Update patient with AI summary
+    // Update patient with AI summary and pharmacy/insurance info
     conn.execute(
-        "UPDATE patients SET ai_summary = ?1 WHERE id = ?2",
+        "UPDATE patients SET ai_summary = ?1, preferred_pharmacy = ?2, insurance_provider = ?3, insurance_policy_number = ?4, insurance_group_number = ?5 WHERE id = ?6",
         params![
             "Middle-aged patient managing hypertension, heart failure, and depression. Responds well to beta-blocker therapy with improving cardiac function and PHQ-9 scores.",
+            "CVS Pharmacy - 1234 Main St, Springfield",
+            "Blue Cross Blue Shield",
+            "XYZ123456789",
+            "GRP001234",
             patient_id
         ],
     )?;
 
-    // Seed diagnoses
+    // Seed diagnoses with categories
+    // Categories: cardiac (red), pulm (blue), gi (brown), neuro (orange), psych (purple),
+    //             renal (yellow), endocrine (orange), obgyn (pink), oncology (lime),
+    //             heme (maroon), msk (gray), immune (green), social (beige)
     conn.execute(
-        "INSERT INTO diagnoses (patient_id, name, icd_code, onset_date, status)
-         VALUES (?1, 'Hypertension', 'I10', '2020-03-15', 'active')",
+        "INSERT INTO diagnoses (patient_id, name, icd_code, onset_date, status, category)
+         VALUES (?1, 'Hypertension', 'I10', '2020-03-15', 'active', 'cardiac')",
         params![patient_id],
     )?;
     let htn_id = conn.last_insert_rowid();
 
     conn.execute(
-        "INSERT INTO diagnoses (patient_id, name, icd_code, onset_date, status)
-         VALUES (?1, 'Heart Failure with Reduced EF', 'I50.22', '2023-06-10', 'active')",
+        "INSERT INTO diagnoses (patient_id, name, icd_code, onset_date, status, category)
+         VALUES (?1, 'Heart Failure with Reduced EF', 'I50.22', '2023-06-10', 'active', 'cardiac')",
         params![patient_id],
     )?;
     let hfref_id = conn.last_insert_rowid();
 
     conn.execute(
-        "INSERT INTO diagnoses (patient_id, name, icd_code, onset_date, status)
-         VALUES (?1, 'Major Depressive Disorder', 'F33.0', '2019-08-20', 'active')",
+        "INSERT INTO diagnoses (patient_id, name, icd_code, onset_date, status, category)
+         VALUES (?1, 'Major Depressive Disorder', 'F33.0', '2019-08-20', 'active', 'psych')",
         params![patient_id],
     )?;
     let depression_id = conn.last_insert_rowid();

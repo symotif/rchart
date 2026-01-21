@@ -12,7 +12,61 @@ export interface Patient {
 	email: string | null;
 	photo_url: string | null;
 	ai_summary: string | null;
+	preferred_pharmacy: string | null;
+	insurance_provider: string | null;
+	insurance_policy_number: string | null;
+	insurance_group_number: string | null;
 }
+
+// Diagnosis category types for the pie chart
+export type DiagnosisCategory =
+	| 'cardiac'    // Red
+	| 'pulm'       // Blue
+	| 'gi'         // Brown
+	| 'neuro'      // Orange
+	| 'psych'      // Purple
+	| 'renal'      // Yellow
+	| 'endocrine'  // Orange
+	| 'obgyn'      // Pink
+	| 'oncology'   // Lime green
+	| 'heme'       // Maroon
+	| 'msk'        // Gray
+	| 'immune'     // Green
+	| 'social';    // Beige
+
+// Category color mapping
+export const CATEGORY_COLORS: Record<DiagnosisCategory, string> = {
+	cardiac: '#ef4444',    // Red
+	pulm: '#3b82f6',       // Blue
+	gi: '#92400e',         // Brown
+	neuro: '#f97316',      // Orange
+	psych: '#a855f7',      // Purple
+	renal: '#eab308',      // Yellow
+	endocrine: '#fb923c',  // Light orange
+	obgyn: '#ec4899',      // Pink
+	oncology: '#84cc16',   // Lime green
+	heme: '#7f1d1d',       // Maroon
+	msk: '#6b7280',        // Gray
+	immune: '#22c55e',     // Green
+	social: '#d4a574'      // Beige
+};
+
+// Category display names
+export const CATEGORY_NAMES: Record<DiagnosisCategory, string> = {
+	cardiac: 'Cardiac',
+	pulm: 'Pulmonary',
+	gi: 'GI',
+	neuro: 'Neuro',
+	psych: 'Psych',
+	renal: 'Renal/GU',
+	endocrine: 'Endocrine',
+	obgyn: 'OB/GYN',
+	oncology: 'Oncology',
+	heme: 'Heme',
+	msk: 'MSK',
+	immune: 'Immune',
+	social: 'Social'
+};
 
 export interface Diagnosis {
 	id: number | null;
@@ -21,6 +75,7 @@ export interface Diagnosis {
 	icd_code: string | null;
 	onset_date: string | null;
 	status: string | null;
+	category: DiagnosisCategory | null;
 }
 
 export interface Medication {

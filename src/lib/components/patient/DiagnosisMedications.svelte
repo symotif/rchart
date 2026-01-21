@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
-	import type { DiagnosisWithMedications, Medication } from '$lib/types/patient';
+	import type { DiagnosisWithMedications, Medication, DiagnosisCategory } from '$lib/types/patient';
+	import { CATEGORY_COLORS } from '$lib/types/patient';
 
 	let {
 		diagnoses,
@@ -14,6 +15,12 @@
 	let svgRef: SVGSVGElement | null = $state(null);
 	let hoveredDiagnosisId: number | null = $state(null);
 	let hoveredMedicationId: number | null = $state(null);
+
+	// Get category color for a diagnosis
+	function getCategoryColor(category: DiagnosisCategory | null | undefined): string {
+		if (!category) return '#6b7280'; // Default gray
+		return CATEGORY_COLORS[category] || '#6b7280';
+	}
 
 	// Build a map of medication IDs to diagnoses that use them
 	const medicationToDiagnoses = $derived(() => {
@@ -149,12 +156,14 @@
 					<p class="text-sm text-gray-500 dark:text-gray-400 italic">No active diagnoses</p>
 				{:else}
 					{#each diagnoses as d}
+						{@const categoryColor = getCategoryColor(d.diagnosis.category)}
 						<div
 							data-diagnosis-id={d.diagnosis.id}
-							class="p-3 rounded-lg border-2 transition-all cursor-pointer
+							class="p-3 rounded-lg border-l-4 border transition-all cursor-pointer
 								{isDiagnosisHighlighted(d.diagnosis.id!)
-								? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-400 dark:border-indigo-500'
-								: 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'}"
+								? 'bg-indigo-50 dark:bg-indigo-900/30 border-r-indigo-400 border-t-indigo-400 border-b-indigo-400 dark:border-r-indigo-500 dark:border-t-indigo-500 dark:border-b-indigo-500'
+								: 'bg-gray-50 dark:bg-gray-700 border-r-gray-200 border-t-gray-200 border-b-gray-200 dark:border-r-gray-600 dark:border-t-gray-600 dark:border-b-gray-600'}"
+							style="border-left-color: {categoryColor};"
 							onmouseenter={() => (hoveredDiagnosisId = d.diagnosis.id)}
 							onmouseleave={() => (hoveredDiagnosisId = null)}
 							role="button"

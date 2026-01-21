@@ -3,7 +3,7 @@
 </script>
 
 <div
-	class={`absolute bottom-0 left-0 h-6 w-screen ${
+	class={`fixed bottom-0 left-0 h-6 w-screen z-[100] ${
 		$ConnectionStatusStore
 			? 'bg-gradient-to-r from-green-600 via-green-400 to-green-600 bg-[length:200%_100%] animate-shimmer'
 			: 'bg-gradient-to-r from-red-400 via-red-600 to-red-400 bg-[length:200%_100%] animate-shimmer'

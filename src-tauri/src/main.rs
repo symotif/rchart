@@ -164,6 +164,10 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             email: Some("logan@example.com".to_string()),
             photo_url: None,
             ai_summary: None,
+            preferred_pharmacy: Some("Walgreens - 100 Main St, Detroit".to_string()),
+            insurance_provider: Some("Aetna".to_string()),
+            insurance_policy_number: Some("AET123456".to_string()),
+            insurance_group_number: Some("GRP100".to_string()),
         },
         Patient {
             id: None,
@@ -177,6 +181,10 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             email: Some("sarah.j@example.com".to_string()),
             photo_url: None,
             ai_summary: None,
+            preferred_pharmacy: Some("CVS Pharmacy - 200 Oak Ave, Chicago".to_string()),
+            insurance_provider: Some("United Healthcare".to_string()),
+            insurance_policy_number: Some("UHC789012".to_string()),
+            insurance_group_number: Some("GRP200".to_string()),
         },
         Patient {
             id: None,
@@ -190,6 +198,10 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             email: Some("m.chen@example.com".to_string()),
             photo_url: None,
             ai_summary: None,
+            preferred_pharmacy: Some("Rite Aid - 300 Pine Rd, Seattle".to_string()),
+            insurance_provider: Some("Cigna".to_string()),
+            insurance_policy_number: Some("CIG345678".to_string()),
+            insurance_group_number: Some("GRP300".to_string()),
         },
         Patient {
             id: None,
@@ -203,6 +215,10 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             email: Some("emily.d@example.com".to_string()),
             photo_url: None,
             ai_summary: None,
+            preferred_pharmacy: None,
+            insurance_provider: Some("Blue Cross Blue Shield".to_string()),
+            insurance_policy_number: Some("BCBS901234".to_string()),
+            insurance_group_number: Some("GRP400".to_string()),
         },
         Patient {
             id: None,
@@ -216,6 +232,10 @@ fn db_seed_test_data(state: State<DbState>) -> Result<String, String> {
             email: Some("j.wilson@example.com".to_string()),
             photo_url: None,
             ai_summary: None,
+            preferred_pharmacy: Some("Costco Pharmacy - 500 Maple Dr, Austin".to_string()),
+            insurance_provider: None,
+            insurance_policy_number: None,
+            insurance_group_number: None,
         },
     ];
 
@@ -243,8 +263,8 @@ fn db_get_encounter(state: State<DbState>, encounter_id: i64) -> Result<Option<E
 }
 
 #[tauri::command]
-fn db_seed_patient_detail_test_data(state: State<DbState>, patient_id: i64) -> Result<String, String> {
+fn db_seed_patient_detail_test_data(state: State<DbState>, patient_id: i64, force_reseed: Option<bool>) -> Result<String, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    db::seed_patient_detail_test_data(&conn, patient_id).map_err(|e| e.to_string())?;
+    db::seed_patient_detail_test_data(&conn, patient_id, force_reseed.unwrap_or(false)).map_err(|e| e.to_string())?;
     Ok(format!("Seeded detail data for patient {}", patient_id))
 }
