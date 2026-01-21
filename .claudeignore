@@ -1,0 +1,12 @@
+# --- Build & Dependency Folders ---
+node_modules/
+target/
+dist/
+build/
+.svelte-kit/
+src-tauri/target/
+
+# --- Large Assets ---
+# Medical images or high-res icons can eat tokens
+src-tauri/icons/
+public/assets/large-images/
