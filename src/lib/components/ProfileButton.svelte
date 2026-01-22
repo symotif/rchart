@@ -1,5 +1,18 @@
-<script>
-	import { SideBarStore, setTab } from '../../stores/SideBarStore';
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { setTab } from '../../stores/SideBarStore';
+	import { addTab } from '../../stores/TabStore';
+
+	function openProfile() {
+		const tab = {
+			id: 'profile',
+			title: 'Profile',
+			path: '/profile'
+		};
+		addTab(tab);
+		setTab(-1);
+		goto('/profile');
+	}
 </script>
 
 <div class="group mb-4">
@@ -7,19 +20,14 @@
 		class="relative flex items-center justify-center mt-3 transform transition-all duration-200 ease-in-out group-hover:scale-110"
 	>
 		<!-- profile -->
-		<a
-			href={'/profile'}
-			onclick={() => {
-				setTab(-1);
-			}}
-		>
+		<button onclick={openProfile}>
 			<img
 				class="w-16 h-16 rounded-full border-2 border-blue-400"
 				src="./src/lib/img/doctor_headshot.jpg"
 				alt="profile-pic"
 				draggable="false"
 			/>
-		</a>
+		</button>
 
 		<!-- institution -->
 		<div>

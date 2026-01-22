@@ -215,12 +215,12 @@
 <!-- Drawer -->
 <div
 	class="fixed top-20 h-[calc(100%-6rem)] bg-gray-100 dark:bg-gray-800 shadow-xl rounded-l-lg transition-all duration-300 ease-in-out flex flex-row z-50"
-	style="width: 750px; right: {isOpen ? '0px' : '-700px'};"
+	style="width: 800px; right: {isOpen ? '0px' : '-750px'};"
 >
-	<!-- Pull Tab - positioned outside the drawer -->
-	<div class="absolute -left-10 top-1/2 -translate-y-1/2 z-50">
+	<!-- Pull Tab - positioned outside the drawer, aligned with edge when closed -->
+	<div class="absolute -left-12 top-1/2 -translate-y-1/2 z-50">
 		<button
-			class="-rotate-90 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-t-lg cursor-pointer whitespace-nowrap shadow-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
+			class="-rotate-90 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-t-lg cursor-pointer whitespace-nowrap shadow-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
 			onclick={toggleDrawer}
 		>
 			<i class="fa-solid fa-comments"></i>
@@ -235,7 +235,7 @@
 
 	<!-- Drawer Handle Bar -->
 	<button
-		class="w-2 flex-shrink-0 bg-gray-200 dark:bg-gray-700 cursor-pointer hover:bg-blue-300 dark:hover:bg-blue-600 transition-colors border-0"
+		class="w-3 flex-shrink-0 bg-gray-200 dark:bg-gray-700 cursor-pointer hover:bg-blue-300 dark:hover:bg-blue-600 transition-colors border-0"
 		onclick={toggleDrawer}
 		aria-label="Toggle message center"
 	></button>
@@ -415,7 +415,7 @@
 		</div>
 
 		<!-- Right Panel: Chat Area -->
-		<div class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-850 {activeTab === 'patients' ? 'border-2 border-orange-400 dark:border-orange-600 rounded-r-lg' : ''}">
+		<div class="flex-1 flex flex-col bg-gray-50 dark:bg-gray-800 {activeTab === 'patients' ? 'border-2 border-orange-400 dark:border-orange-600 rounded-r-lg' : ''}">
 			{#if selectedChatId && currentChat}
 				<!-- Chat Header -->
 				<div class="p-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between">
@@ -525,8 +525,3 @@
 	</div>
 </div>
 
-<style>
-	.bg-gray-850 {
-		background-color: rgb(30, 35, 45);
-	}
-</style>

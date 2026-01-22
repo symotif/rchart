@@ -132,7 +132,7 @@
 	}
 </script>
 
-<div class="absolute left-20 top-20 right-10 bottom-5 mx-5 my-8 overflow-y-auto">
+<div class="absolute left-20 top-20 right-0 bottom-5 px-5 py-8 overflow-y-auto">
 	{#if loading}
 		<div class="flex items-center justify-center h-64">
 			<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
