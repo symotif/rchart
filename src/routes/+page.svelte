@@ -79,11 +79,11 @@
 	}
 
 	let appointments = $state([
-		{ name: 'Logan', age: '24', sex: 'Male', time: '12:30' },
-		{ name: 'John', age: '14', sex: 'Female', time: '1:30' },
-		{ name: 'Max', age: '50', sex: 'Male', time: '2:00' },
-		{ name: 'Sam', age: '22', sex: 'Nonbinary', time: '2:30' },
-		{ name: 'Ben', age: '23', sex: 'Male', time: '3:30' }
+		{ name: 'Logan', age: '24', sex: 'Male', time: '12:30', patientId: 1 },
+		{ name: 'John', age: '14', sex: 'Female', time: '1:30', patientId: 2 },
+		{ name: 'Max', age: '50', sex: 'Male', time: '2:00', patientId: 3 },
+		{ name: 'Sam', age: '22', sex: 'Nonbinary', time: '2:30', patientId: 4 },
+		{ name: 'Ben', age: '23', sex: 'Male', time: '3:30', patientId: 5 }
 	]);
 
 	async function get_month() {

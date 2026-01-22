@@ -6,7 +6,7 @@
 
 mod db;
 
-use db::{DbState, Patient, Appointment, AppointmentWithPatient, PatientFullData, Encounter};
+use db::{DbState, Patient, Appointment, AppointmentWithPatient, PatientFullData, Encounter, User, UserFullData, UserSettings};
 use serde::{Deserialize, Serialize};
 use tauri::{State, Manager};
 use std::sync::Mutex;
@@ -61,6 +61,16 @@ fn main() {
             db_get_patient_full,
             db_get_encounter,
             db_seed_patient_detail_test_data,
+            // Encounter CRUD commands
+            db_create_encounter,
+            db_update_encounter,
+            // User/Provider commands
+            db_get_current_user,
+            db_get_user_full,
+            db_update_user,
+            db_update_user_settings,
+            db_update_password,
+            db_seed_user_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -267,4 +277,55 @@ fn db_seed_patient_detail_test_data(state: State<DbState>, patient_id: i64, forc
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     db::seed_patient_detail_test_data(&conn, patient_id, force_reseed.unwrap_or(false)).map_err(|e| e.to_string())?;
     Ok(format!("Seeded detail data for patient {}", patient_id))
+}
+
+#[tauri::command]
+fn db_create_encounter(state: State<DbState>, encounter: Encounter) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_encounter(&conn, &encounter).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_encounter(state: State<DbState>, encounter: Encounter) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_encounter(&conn, &encounter).map_err(|e| e.to_string())
+}
+
+// ============ User/Provider Commands ============
+
+#[tauri::command]
+fn db_get_current_user(state: State<DbState>) -> Result<Option<UserFullData>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_current_user_full_data(&conn).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_user_full(state: State<DbState>, id: i64) -> Result<Option<UserFullData>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_user_full_data(&conn, id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_user(state: State<DbState>, user: User) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_user(&conn, &user).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_user_settings(state: State<DbState>, settings: UserSettings) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_user_settings(&conn, &settings).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_password(state: State<DbState>, user_id: i64, new_password_hash: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_user_password(&conn, user_id, &new_password_hash).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_seed_user_data(state: State<DbState>) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::seed_user_data(&conn).map_err(|e| e.to_string())?;
+    Ok("User data seeded successfully".to_string())
 }

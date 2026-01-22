@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { goto } from '$app/navigation';
-	import { setActiveTab } from '../../../../../stores/TabStore';
+	import { setActiveTab, addTab } from '../../../../../stores/TabStore';
 
 	import type { Encounter, Patient } from '$lib/types/patient';
 
@@ -49,6 +49,27 @@
 	function goBackToPatient() {
 		const patientId = $page.params.id;
 		goto(`/patient/${patientId}`);
+	}
+
+	function handleEditNote() {
+		const patientId = $page.params.id;
+		const encounterId = $page.params.encounterId;
+		const tab = {
+			id: `note-${encounterId}-${patientId}`,
+			title: `Edit Note - ${patient?.first_name} ${patient?.last_name}`,
+			path: `/patient/${patientId}/note/${encounterId}`
+		};
+		addTab(tab);
+		goto(tab.path);
+	}
+
+	function handlePrint() {
+		window.print();
+	}
+
+	function handleBillingView() {
+		// Placeholder for billing view functionality
+		alert('Billing view will be implemented');
 	}
 
 	onMount(() => {
@@ -124,17 +145,6 @@
 				{/if}
 			</div>
 
-			<!-- Summary -->
-			{#if encounter.summary}
-				<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-4">
-					<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-3 flex items-center gap-2">
-						<i class="fa-solid fa-clipboard text-blue-500"></i>
-						Summary
-					</h2>
-					<p class="text-gray-700 dark:text-gray-300">{encounter.summary}</p>
-				</div>
-			{/if}
-
 			<!-- Full Note Content -->
 			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
 				<h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
@@ -144,7 +154,7 @@
 
 				{#if encounter.note_content}
 					<div class="prose prose-sm dark:prose-invert max-w-none">
-						<pre class="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-sm leading-relaxed">{encounter.note_content}</pre>
+						<pre class="whitespace-pre-wrap font-sans text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 p-4 rounded-lg text-sm leading-relaxed">{@html encounter.note_content}</pre>
 					</div>
 				{:else}
 					<p class="text-gray-500 dark:text-gray-400 italic">No clinical note content available.</p>
@@ -154,22 +164,25 @@
 			<!-- Actions -->
 			<div class="mt-4 flex gap-3">
 				<button
+					onclick={handleEditNote}
 					class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
 				>
 					<i class="fa-solid fa-edit mr-2"></i>
 					Edit Note
 				</button>
 				<button
+					onclick={handlePrint}
 					class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
 				>
 					<i class="fa-solid fa-print mr-2"></i>
 					Print
 				</button>
 				<button
+					onclick={handleBillingView}
 					class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
 				>
-					<i class="fa-solid fa-share mr-2"></i>
-					Share
+					<i class="fa-solid fa-file-invoice-dollar mr-2"></i>
+					Billing View
 				</button>
 			</div>
 		</div>

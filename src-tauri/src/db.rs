@@ -276,6 +276,66 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
         );
 
+        -- Users/Providers table
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            degree_type TEXT,
+            specialty TEXT,
+            subspecialty TEXT,
+            npi_number TEXT,
+            photo_url TEXT,
+            bio TEXT,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            updated_at TEXT DEFAULT (datetime('now', 'localtime'))
+        );
+
+        -- User education/training table
+        CREATE TABLE IF NOT EXISTS user_education (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            education_type TEXT NOT NULL,
+            institution TEXT NOT NULL,
+            degree TEXT,
+            field_of_study TEXT,
+            start_year INTEGER,
+            end_year INTEGER,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        -- User badges/awards table
+        CREATE TABLE IF NOT EXISTS user_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            badge_name TEXT NOT NULL,
+            badge_type TEXT NOT NULL,
+            description TEXT,
+            icon TEXT,
+            color TEXT,
+            awarded_date TEXT,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        -- User settings table
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            language TEXT DEFAULT 'en',
+            notifications_enabled INTEGER DEFAULT 1,
+            email_notifications INTEGER DEFAULT 1,
+            sms_notifications INTEGER DEFAULT 0,
+            two_factor_enabled INTEGER DEFAULT 0,
+            two_factor_secret TEXT,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
         -- Indexes for performance
         CREATE INDEX IF NOT EXISTS idx_diagnoses_patient ON diagnoses(patient_id);
         CREATE INDEX IF NOT EXISTS idx_medications_patient ON medications(patient_id);
@@ -284,6 +344,8 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
         CREATE INDEX IF NOT EXISTS idx_scores_patient_date ON clinical_scores(patient_id, recorded_at);
         CREATE INDEX IF NOT EXISTS idx_encounters_patient_date ON encounters(patient_id, encounter_date);
         CREATE INDEX IF NOT EXISTS idx_timeline_patient_date ON timeline_events(patient_id, event_date);
+        CREATE INDEX IF NOT EXISTS idx_user_education_user ON user_education(user_id);
+        CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
         "
     )?;
 
@@ -509,6 +571,66 @@ pub struct TimelineEvent {
     pub event_date: String,
     pub icon: Option<String>,
     pub color: Option<String>,
+}
+
+// ============ User/Provider Structs ============
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct User {
+    pub id: Option<i64>,
+    pub username: String,
+    pub password_hash: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub degree_type: Option<String>,
+    pub specialty: Option<String>,
+    pub subspecialty: Option<String>,
+    pub npi_number: Option<String>,
+    pub photo_url: Option<String>,
+    pub bio: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserEducation {
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub education_type: String,
+    pub institution: String,
+    pub degree: Option<String>,
+    pub field_of_study: Option<String>,
+    pub start_year: Option<i32>,
+    pub end_year: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserBadge {
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub badge_name: String,
+    pub badge_type: String,
+    pub description: Option<String>,
+    pub icon: Option<String>,
+    pub color: Option<String>,
+    pub awarded_date: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserSettings {
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub language: Option<String>,
+    pub notifications_enabled: Option<bool>,
+    pub email_notifications: Option<bool>,
+    pub sms_notifications: Option<bool>,
+    pub two_factor_enabled: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserFullData {
+    pub user: User,
+    pub education: Vec<UserEducation>,
+    pub badges: Vec<UserBadge>,
+    pub settings: UserSettings,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -942,6 +1064,49 @@ pub fn get_encounter_by_id(conn: &Connection, encounter_id: i64) -> Result<Optio
     }
 }
 
+pub fn create_encounter(conn: &Connection, encounter: &Encounter) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO encounters (patient_id, encounter_date, encounter_type, chief_complaint, summary, note_content, provider, location)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            encounter.patient_id,
+            encounter.encounter_date,
+            encounter.encounter_type,
+            encounter.chief_complaint,
+            encounter.summary,
+            encounter.note_content,
+            encounter.provider,
+            encounter.location,
+        ],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_encounter(conn: &Connection, encounter: &Encounter) -> Result<()> {
+    conn.execute(
+        "UPDATE encounters SET
+            encounter_date = ?1,
+            encounter_type = ?2,
+            chief_complaint = ?3,
+            summary = ?4,
+            note_content = ?5,
+            provider = ?6,
+            location = ?7
+         WHERE id = ?8",
+        params![
+            encounter.encounter_date,
+            encounter.encounter_type,
+            encounter.chief_complaint,
+            encounter.summary,
+            encounter.note_content,
+            encounter.provider,
+            encounter.location,
+            encounter.id,
+        ],
+    )?;
+    Ok(())
+}
+
 // ============ Allergies CRUD Operations ============
 
 pub fn get_allergies_for_patient(conn: &Connection, patient_id: i64) -> Result<Vec<Allergy>> {
@@ -1115,6 +1280,463 @@ pub fn clear_patient_detail_data(conn: &Connection, patient_id: i64) -> Result<(
     conn.execute("DELETE FROM todos WHERE patient_id = ?1", params![patient_id])?;
     conn.execute("DELETE FROM goals WHERE patient_id = ?1", params![patient_id])?;
     conn.execute("DELETE FROM timeline_events WHERE patient_id = ?1", params![patient_id])?;
+    Ok(())
+}
+
+// ============ User CRUD Operations ============
+
+pub fn create_user(conn: &Connection, user: &User) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO users (username, password_hash, first_name, last_name, degree_type, specialty, subspecialty, npi_number, photo_url, bio)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            user.username,
+            user.password_hash,
+            user.first_name,
+            user.last_name,
+            user.degree_type,
+            user.specialty,
+            user.subspecialty,
+            user.npi_number,
+            user.photo_url,
+            user.bio,
+        ],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn get_user_by_id(conn: &Connection, id: i64) -> Result<Option<User>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, username, password_hash, first_name, last_name, degree_type, specialty, subspecialty, npi_number, photo_url, bio
+         FROM users WHERE id = ?1"
+    )?;
+
+    let mut rows = stmt.query(params![id])?;
+
+    if let Some(row) = rows.next()? {
+        Ok(Some(User {
+            id: Some(row.get(0)?),
+            username: row.get(1)?,
+            password_hash: row.get(2)?,
+            first_name: row.get(3)?,
+            last_name: row.get(4)?,
+            degree_type: row.get(5)?,
+            specialty: row.get(6)?,
+            subspecialty: row.get(7)?,
+            npi_number: row.get(8)?,
+            photo_url: row.get(9)?,
+            bio: row.get(10)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn get_current_user(conn: &Connection) -> Result<Option<User>> {
+    // For now, get the first user (single-user app)
+    let mut stmt = conn.prepare(
+        "SELECT id, username, password_hash, first_name, last_name, degree_type, specialty, subspecialty, npi_number, photo_url, bio
+         FROM users ORDER BY id LIMIT 1"
+    )?;
+
+    let mut rows = stmt.query([])?;
+
+    if let Some(row) = rows.next()? {
+        Ok(Some(User {
+            id: Some(row.get(0)?),
+            username: row.get(1)?,
+            password_hash: row.get(2)?,
+            first_name: row.get(3)?,
+            last_name: row.get(4)?,
+            degree_type: row.get(5)?,
+            specialty: row.get(6)?,
+            subspecialty: row.get(7)?,
+            npi_number: row.get(8)?,
+            photo_url: row.get(9)?,
+            bio: row.get(10)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn update_user(conn: &Connection, user: &User) -> Result<()> {
+    conn.execute(
+        "UPDATE users SET
+            username = ?1,
+            first_name = ?2,
+            last_name = ?3,
+            degree_type = ?4,
+            specialty = ?5,
+            subspecialty = ?6,
+            npi_number = ?7,
+            photo_url = ?8,
+            bio = ?9,
+            updated_at = datetime('now', 'localtime')
+         WHERE id = ?10",
+        params![
+            user.username,
+            user.first_name,
+            user.last_name,
+            user.degree_type,
+            user.specialty,
+            user.subspecialty,
+            user.npi_number,
+            user.photo_url,
+            user.bio,
+            user.id,
+        ],
+    )?;
+    Ok(())
+}
+
+pub fn update_user_password(conn: &Connection, user_id: i64, new_password_hash: &str) -> Result<()> {
+    conn.execute(
+        "UPDATE users SET password_hash = ?1, updated_at = datetime('now', 'localtime') WHERE id = ?2",
+        params![new_password_hash, user_id],
+    )?;
+    Ok(())
+}
+
+// ============ User Education CRUD Operations ============
+
+pub fn get_education_for_user(conn: &Connection, user_id: i64) -> Result<Vec<UserEducation>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, education_type, institution, degree, field_of_study, start_year, end_year
+         FROM user_education WHERE user_id = ?1
+         ORDER BY end_year DESC"
+    )?;
+
+    let education = stmt.query_map(params![user_id], |row| {
+        Ok(UserEducation {
+            id: Some(row.get(0)?),
+            user_id: row.get(1)?,
+            education_type: row.get(2)?,
+            institution: row.get(3)?,
+            degree: row.get(4)?,
+            field_of_study: row.get(5)?,
+            start_year: row.get(6)?,
+            end_year: row.get(7)?,
+        })
+    })?;
+
+    education.collect()
+}
+
+pub fn create_user_education(conn: &Connection, edu: &UserEducation) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO user_education (user_id, education_type, institution, degree, field_of_study, start_year, end_year)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            edu.user_id,
+            edu.education_type,
+            edu.institution,
+            edu.degree,
+            edu.field_of_study,
+            edu.start_year,
+            edu.end_year,
+        ],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+// ============ User Badges CRUD Operations ============
+
+pub fn get_badges_for_user(conn: &Connection, user_id: i64) -> Result<Vec<UserBadge>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, badge_name, badge_type, description, icon, color, awarded_date
+         FROM user_badges WHERE user_id = ?1
+         ORDER BY awarded_date DESC"
+    )?;
+
+    let badges = stmt.query_map(params![user_id], |row| {
+        Ok(UserBadge {
+            id: Some(row.get(0)?),
+            user_id: row.get(1)?,
+            badge_name: row.get(2)?,
+            badge_type: row.get(3)?,
+            description: row.get(4)?,
+            icon: row.get(5)?,
+            color: row.get(6)?,
+            awarded_date: row.get(7)?,
+        })
+    })?;
+
+    badges.collect()
+}
+
+pub fn create_user_badge(conn: &Connection, badge: &UserBadge) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO user_badges (user_id, badge_name, badge_type, description, icon, color, awarded_date)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            badge.user_id,
+            badge.badge_name,
+            badge.badge_type,
+            badge.description,
+            badge.icon,
+            badge.color,
+            badge.awarded_date,
+        ],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+// ============ User Settings CRUD Operations ============
+
+pub fn get_settings_for_user(conn: &Connection, user_id: i64) -> Result<Option<UserSettings>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, language, notifications_enabled, email_notifications, sms_notifications, two_factor_enabled
+         FROM user_settings WHERE user_id = ?1"
+    )?;
+
+    let mut rows = stmt.query(params![user_id])?;
+
+    if let Some(row) = rows.next()? {
+        let notif_int: Option<i32> = row.get(3)?;
+        let email_int: Option<i32> = row.get(4)?;
+        let sms_int: Option<i32> = row.get(5)?;
+        let tfa_int: Option<i32> = row.get(6)?;
+
+        Ok(Some(UserSettings {
+            id: Some(row.get(0)?),
+            user_id: row.get(1)?,
+            language: row.get(2)?,
+            notifications_enabled: notif_int.map(|v| v != 0),
+            email_notifications: email_int.map(|v| v != 0),
+            sms_notifications: sms_int.map(|v| v != 0),
+            two_factor_enabled: tfa_int.map(|v| v != 0),
+        }))
+    } else {
+        // Create default settings if none exist
+        conn.execute(
+            "INSERT INTO user_settings (user_id) VALUES (?1)",
+            params![user_id],
+        )?;
+        Ok(Some(UserSettings {
+            id: Some(conn.last_insert_rowid()),
+            user_id,
+            language: Some("en".to_string()),
+            notifications_enabled: Some(true),
+            email_notifications: Some(true),
+            sms_notifications: Some(false),
+            two_factor_enabled: Some(false),
+        }))
+    }
+}
+
+pub fn update_user_settings(conn: &Connection, settings: &UserSettings) -> Result<()> {
+    conn.execute(
+        "UPDATE user_settings SET
+            language = ?1,
+            notifications_enabled = ?2,
+            email_notifications = ?3,
+            sms_notifications = ?4,
+            two_factor_enabled = ?5,
+            updated_at = datetime('now', 'localtime')
+         WHERE user_id = ?6",
+        params![
+            settings.language,
+            settings.notifications_enabled.map(|b| if b { 1 } else { 0 }),
+            settings.email_notifications.map(|b| if b { 1 } else { 0 }),
+            settings.sms_notifications.map(|b| if b { 1 } else { 0 }),
+            settings.two_factor_enabled.map(|b| if b { 1 } else { 0 }),
+            settings.user_id,
+        ],
+    )?;
+    Ok(())
+}
+
+// ============ User Full Data (Aggregated) ============
+
+pub fn get_user_full_data(conn: &Connection, user_id: i64) -> Result<Option<UserFullData>> {
+    let user = match get_user_by_id(conn, user_id)? {
+        Some(u) => u,
+        None => return Ok(None),
+    };
+
+    let education = get_education_for_user(conn, user_id)?;
+    let badges = get_badges_for_user(conn, user_id)?;
+    let settings = get_settings_for_user(conn, user_id)?.unwrap_or(UserSettings {
+        id: None,
+        user_id,
+        language: Some("en".to_string()),
+        notifications_enabled: Some(true),
+        email_notifications: Some(true),
+        sms_notifications: Some(false),
+        two_factor_enabled: Some(false),
+    });
+
+    Ok(Some(UserFullData {
+        user,
+        education,
+        badges,
+        settings,
+    }))
+}
+
+pub fn get_current_user_full_data(conn: &Connection) -> Result<Option<UserFullData>> {
+    let user = match get_current_user(conn)? {
+        Some(u) => u,
+        None => return Ok(None),
+    };
+
+    let user_id = user.id.unwrap_or(0);
+    let education = get_education_for_user(conn, user_id)?;
+    let badges = get_badges_for_user(conn, user_id)?;
+    let settings = get_settings_for_user(conn, user_id)?.unwrap_or(UserSettings {
+        id: None,
+        user_id,
+        language: Some("en".to_string()),
+        notifications_enabled: Some(true),
+        email_notifications: Some(true),
+        sms_notifications: Some(false),
+        two_factor_enabled: Some(false),
+    });
+
+    Ok(Some(UserFullData {
+        user,
+        education,
+        badges,
+        settings,
+    }))
+}
+
+// ============ Seed User Data ============
+
+pub fn seed_user_data(conn: &Connection) -> Result<()> {
+    // Check if a user already exists
+    let existing = get_current_user(conn)?;
+    if existing.is_some() {
+        return Ok(());
+    }
+
+    // Create Dr. Madeline Chu
+    let user = User {
+        id: None,
+        username: "mchu".to_string(),
+        password_hash: "hashed_password_placeholder".to_string(),
+        first_name: "Madeline".to_string(),
+        last_name: "Chu".to_string(),
+        degree_type: Some("MD".to_string()),
+        specialty: Some("Psychiatry".to_string()),
+        subspecialty: Some("Child and Adolescent Psychiatry".to_string()),
+        npi_number: Some("1234567890".to_string()),
+        photo_url: None,
+        bio: Some("Dr. Madeline Chu is a board-certified child and adolescent psychiatrist with a passion for helping young patients and their families navigate mental health challenges. She believes in a collaborative, evidence-based approach that incorporates both therapeutic interventions and, when appropriate, medication management. Outside of clinical practice, she enjoys hiking, watercolor painting, and volunteering at local community mental health organizations.".to_string()),
+    };
+
+    let user_id = create_user(conn, &user)?;
+
+    // Create default settings
+    get_settings_for_user(conn, user_id)?;
+
+    // Add education history
+    let education_entries = vec![
+        UserEducation {
+            id: None,
+            user_id,
+            education_type: "Medical School".to_string(),
+            institution: "Stanford University School of Medicine".to_string(),
+            degree: Some("MD".to_string()),
+            field_of_study: Some("Medicine".to_string()),
+            start_year: Some(2010),
+            end_year: Some(2014),
+        },
+        UserEducation {
+            id: None,
+            user_id,
+            education_type: "Residency".to_string(),
+            institution: "Massachusetts General Hospital".to_string(),
+            degree: None,
+            field_of_study: Some("Psychiatry".to_string()),
+            start_year: Some(2014),
+            end_year: Some(2018),
+        },
+        UserEducation {
+            id: None,
+            user_id,
+            education_type: "Fellowship".to_string(),
+            institution: "Boston Children's Hospital".to_string(),
+            degree: None,
+            field_of_study: Some("Child and Adolescent Psychiatry".to_string()),
+            start_year: Some(2018),
+            end_year: Some(2020),
+        },
+        UserEducation {
+            id: None,
+            user_id,
+            education_type: "Undergraduate".to_string(),
+            institution: "University of California, Berkeley".to_string(),
+            degree: Some("BA".to_string()),
+            field_of_study: Some("Psychology".to_string()),
+            start_year: Some(2006),
+            end_year: Some(2010),
+        },
+    ];
+
+    for edu in &education_entries {
+        create_user_education(conn, edu)?;
+    }
+
+    // Add badges/awards
+    let badges = vec![
+        UserBadge {
+            id: None,
+            user_id,
+            badge_name: "Board Certified".to_string(),
+            badge_type: "certification".to_string(),
+            description: Some("American Board of Psychiatry and Neurology".to_string()),
+            icon: Some("shield-check".to_string()),
+            color: Some("#3b82f6".to_string()),
+            awarded_date: Some("2018-08-15".to_string()),
+        },
+        UserBadge {
+            id: None,
+            user_id,
+            badge_name: "CAP Certified".to_string(),
+            badge_type: "certification".to_string(),
+            description: Some("Child & Adolescent Psychiatry Subspecialty".to_string()),
+            icon: Some("academic-cap".to_string()),
+            color: Some("#8b5cf6".to_string()),
+            awarded_date: Some("2020-06-20".to_string()),
+        },
+        UserBadge {
+            id: None,
+            user_id,
+            badge_name: "Excellence in Teaching".to_string(),
+            badge_type: "award".to_string(),
+            description: Some("MGH Psychiatry Residency Program".to_string()),
+            icon: Some("star".to_string()),
+            color: Some("#f59e0b".to_string()),
+            awarded_date: Some("2017-05-15".to_string()),
+        },
+        UserBadge {
+            id: None,
+            user_id,
+            badge_name: "Research Fellow".to_string(),
+            badge_type: "honor".to_string(),
+            description: Some("NIMH Early Career Research Award".to_string()),
+            icon: Some("beaker".to_string()),
+            color: Some("#10b981".to_string()),
+            awarded_date: Some("2021-03-01".to_string()),
+        },
+        UserBadge {
+            id: None,
+            user_id,
+            badge_name: "Patient Choice Award".to_string(),
+            badge_type: "award".to_string(),
+            description: Some("Vitals.com - 3 consecutive years".to_string()),
+            icon: Some("heart".to_string()),
+            color: Some("#ec4899".to_string()),
+            awarded_date: Some("2023-01-10".to_string()),
+        },
+    ];
+
+    for badge in &badges {
+        create_user_badge(conn, badge)?;
+    }
+
     Ok(())
 }
 

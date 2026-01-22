@@ -20,6 +20,18 @@
 		addTab(tab);
 		goto(tab.path);
 	}
+
+	function editEncounter(e: MouseEvent, encounter: Encounter) {
+		e.stopPropagation();
+		const encounterId = encounter.id;
+		const tab = {
+			id: `note-${encounterId}-${patientId}`,
+			title: `Edit Note - ${patientName}`,
+			path: `/patient/${patientId}/note/${encounterId}`
+		};
+		addTab(tab);
+		goto(tab.path);
+	}
 </script>
 
 <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 h-full flex flex-col">
@@ -33,17 +45,29 @@
 			<p class="text-sm text-gray-500 dark:text-gray-400 italic">No encounters recorded</p>
 		{:else}
 			{#each encounters as encounter}
-				<button
-					class="w-full text-left p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600"
+				<div
+					class="w-full p-3 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600 cursor-pointer"
 					onclick={() => openEncounter(encounter)}
+					onkeydown={(e) => e.key === 'Enter' && openEncounter(encounter)}
+					role="button"
+					tabindex="0"
 				>
 					<div class="flex items-center justify-between mb-1">
 						<span class="text-sm font-medium text-gray-800 dark:text-gray-200">
 							{formatDate(encounter.encounter_date)}
 						</span>
-						<span class="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-							{encounter.encounter_type}
-						</span>
+						<div class="flex items-center gap-2">
+							<span class="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
+								{encounter.encounter_type}
+							</span>
+							<button
+								onclick={(e) => editEncounter(e, encounter)}
+								class="p-1 text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+								title="Edit note"
+							>
+								<i class="fa-solid fa-pen-to-square text-xs"></i>
+							</button>
+						</div>
 					</div>
 					{#if encounter.chief_complaint}
 						<p class="text-xs text-gray-600 dark:text-gray-400 truncate">
@@ -55,7 +79,7 @@
 							{encounter.provider}
 						</p>
 					{/if}
-				</button>
+				</div>
 			{/each}
 		{/if}
 	</div>
