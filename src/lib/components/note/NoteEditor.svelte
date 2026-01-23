@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import type { Patient, Encounter } from '$lib/types/patient';
 
 	type NoteData = {
@@ -14,6 +15,7 @@
 		encounter = null,
 		patientId,
 		saving = false,
+		zenModeDefault = false,
 		onSign = (_data: NoteData) => {},
 		onSave = (_data: NoteData) => {}
 	}: {
@@ -21,9 +23,14 @@
 		encounter: Encounter | null;
 		patientId: number;
 		saving?: boolean;
+		zenModeDefault?: boolean;
 		onSign?: (data: NoteData) => void;
 		onSave?: (data: NoteData) => void;
 	} = $props();
+
+	// Zen mode state
+	let zenMode = $state(false);
+	let zenTransitioning = $state(false);
 
 	// Note content state
 	let noteContent = $state(encounter?.note_content || '');
@@ -68,6 +75,44 @@
 	];
 
 	let showCosignerDropdown = $state(false);
+
+	// Zen mode functions
+	function enterZenMode() {
+		zenTransitioning = true;
+		zenMode = true;
+		// Focus the editor after transition
+		setTimeout(() => {
+			zenTransitioning = false;
+			editorRef?.focus();
+		}, 300);
+	}
+
+	function exitZenMode() {
+		zenTransitioning = true;
+		setTimeout(() => {
+			zenMode = false;
+			zenTransitioning = false;
+		}, 300);
+	}
+
+	function handleKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && zenMode) {
+			exitZenMode();
+		}
+	}
+
+	// Initialize zen mode if default is true
+	onMount(() => {
+		if (zenModeDefault) {
+			enterZenMode();
+		}
+
+		// Add keyboard listener
+		window.addEventListener('keydown', handleKeydown);
+		return () => {
+			window.removeEventListener('keydown', handleKeydown);
+		};
+	});
 
 	// Fonts available
 	const fonts = ['Arial', 'Times New Roman', 'Georgia', 'Courier New', 'Verdana', 'Helvetica'];
@@ -160,7 +205,7 @@
 			{/if}
 		</div>
 
-		<!-- Note Type Selector -->
+		<!-- Note Type Selector and Zen Mode -->
 		<div class="flex items-center gap-3">
 			<label class="text-sm text-gray-600 dark:text-gray-400">Note Type:</label>
 			<select
@@ -171,6 +216,22 @@
 					<option value={type}>{type}</option>
 				{/each}
 			</select>
+
+			<!-- Zen Mode Button -->
+			<button
+				onclick={enterZenMode}
+				class="p-2 text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/30 rounded-lg transition-colors"
+				title="Enter Zen Mode"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+					<path d="M12 2C12 2 9.5 5.5 9.5 8.5C9.5 10.5 10.5 12 12 12C13.5 12 14.5 10.5 14.5 8.5C14.5 5.5 12 2 12 2Z"/>
+					<path d="M7 8C7 8 4.5 10 4.5 12.5C4.5 14.5 6 16 7.5 16C8.5 16 9.5 15.5 10 14.5" opacity="0.8"/>
+					<path d="M17 8C17 8 19.5 10 19.5 12.5C19.5 14.5 18 16 16.5 16C15.5 16 14.5 15.5 14 14.5" opacity="0.8"/>
+					<path d="M4 14C4 14 2 16 2 18C2 19.5 3.5 21 5 21C6.5 21 8 20 9 18.5" opacity="0.6"/>
+					<path d="M20 14C20 14 22 16 22 18C22 19.5 20.5 21 19 21C17.5 21 16 20 15 18.5" opacity="0.6"/>
+					<path d="M12 12V22" stroke="currentColor" stroke-width="2" fill="none"/>
+				</svg>
+			</button>
 		</div>
 	</div>
 
@@ -463,3 +524,50 @@
 		</div>
 	</div>
 </div>
+
+<!-- Zen Mode Overlay (backdrop only) -->
+{#if zenMode}
+	<div
+		class="fixed inset-0 z-40 transition-all duration-300 ease-in-out {zenTransitioning ? 'bg-transparent' : 'bg-black/80'}"
+		onclick={exitZenMode}
+		role="button"
+		tabindex="-1"
+		onkeydown={(e) => e.key === 'Escape' && exitZenMode()}
+	>
+	</div>
+
+	<!-- Exit Button -->
+	<button
+		onclick={exitZenMode}
+		class="fixed top-6 left-6 text-gray-400 hover:text-white transition-colors z-[60]"
+		title="Exit Zen Mode (Esc)"
+	>
+		<i class="fa-solid fa-times text-2xl"></i>
+	</button>
+
+	<!-- Zen Editor Container (floating above backdrop) -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
+	>
+		<div
+			class="w-full max-w-4xl h-[80vh] mx-8 transition-all duration-300 ease-in-out pointer-events-auto {zenTransitioning ? 'scale-95 opacity-0' : 'scale-100 opacity-100'}"
+		>
+			<div
+				contenteditable="true"
+				class="zen-editor w-full h-full p-8 bg-white dark:bg-gray-800 rounded-xl shadow-2xl focus:outline-none text-gray-800 dark:text-gray-200 overflow-auto"
+				style="font-family: {currentFont}; font-size: {currentFontSize}px;"
+				oninput={(e) => {
+					// Sync content back to main editor
+					if (editorRef) {
+						editorRef.innerHTML = (e.target as HTMLDivElement).innerHTML;
+					}
+				}}
+			>{@html editorRef?.innerHTML ?? ''}</div>
+		</div>
+	</div>
+
+	<!-- Subtle hint at bottom -->
+	<p class="fixed bottom-6 left-1/2 -translate-x-1/2 text-gray-500 text-sm z-50">
+		Press <kbd class="px-2 py-1 bg-gray-700 rounded text-gray-300">Esc</kbd> to exit Zen mode
+	</p>
+{/if}

@@ -7,12 +7,14 @@
 
 	import NoteEditor from '$lib/components/note/NoteEditor.svelte';
 	import type { Encounter, Patient } from '$lib/types/patient';
+	import type { UserFullData } from '$lib/types/user';
 
 	let encounter = $state<Encounter | null>(null);
 	let patient = $state<Patient | null>(null);
 	let loading = $state(true);
 	let error = $state('');
 	let saving = $state(false);
+	let zenModeDefault = $state(false);
 
 	// noteId can be 'new' for creating a new note, or an encounter ID for editing
 	let isNewNote = $derived($page.params.noteId === 'new');
@@ -21,6 +23,12 @@
 		try {
 			loading = true;
 			error = '';
+
+			// Fetch user settings to check zen mode default
+			const userData = await invoke<UserFullData | null>('db_get_current_user');
+			if (userData?.settings?.zen_mode_default) {
+				zenModeDefault = true;
+			}
 
 			// Fetch patient info
 			patient = await invoke<Patient | null>('db_get_patient', { id: parseInt(patientId, 10) });
@@ -196,6 +204,7 @@
 			{encounter}
 			patientId={parseInt($page.params.id, 10)}
 			{saving}
+			{zenModeDefault}
 			onSign={handleSign}
 			onSave={handleSave}
 		/>

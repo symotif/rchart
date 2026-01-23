@@ -95,6 +95,22 @@ export interface DiagnosisWithMedications {
 	medication_ids: number[];
 }
 
+export interface Prescription {
+	id: number | null;
+	patient_id: number;
+	medication_id: number;
+	quantity: number;
+	days_supply: number;
+	refills: number;
+	sig: string;
+	pharmacy: string | null;
+	prescriber_id: number | null;
+	status: string | null;
+	prescribed_date: string | null;
+	filled_date: string | null;
+	notes: string | null;
+}
+
 export interface Vital {
 	id: number | null;
 	patient_id: number;

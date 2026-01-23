@@ -217,25 +217,57 @@
 					<i class="fa-solid fa-palette mr-2 text-purple-500"></i>Appearance
 				</h2>
 
-				<div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-					<div>
-						<p class="font-medium text-gray-800 dark:text-gray-100">Dark Mode</p>
-						<p class="text-sm text-gray-500 dark:text-gray-400">
-							Switch between light and dark themes
-						</p>
+				<div class="space-y-4">
+					<div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<div>
+							<p class="font-medium text-gray-800 dark:text-gray-100">Dark Mode</p>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Switch between light and dark themes
+							</p>
+						</div>
+						<button
+							onclick={toggleTheme}
+							class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+								{$ThemeStore === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}"
+							role="switch"
+							aria-checked={$ThemeStore === 'dark'}
+						>
+							<span
+								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+									{$ThemeStore === 'dark' ? 'translate-x-6' : 'translate-x-1'}"
+							></span>
+						</button>
 					</div>
-					<button
-						onclick={toggleTheme}
-						class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-							{$ThemeStore === 'dark' ? 'bg-blue-600' : 'bg-gray-300'}"
-						role="switch"
-						aria-checked={$ThemeStore === 'dark'}
-					>
-						<span
-							class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-								{$ThemeStore === 'dark' ? 'translate-x-6' : 'translate-x-1'}"
-						></span>
-					</button>
+
+					<!-- Zen Mode Default -->
+					<div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<div>
+							<p class="font-medium text-gray-800 dark:text-gray-100">
+								<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1 text-pink-500" viewBox="0 0 24 24" fill="currentColor">
+									<path d="M12 2C12 2 9.5 5.5 9.5 8.5C9.5 10.5 10.5 12 12 12C13.5 12 14.5 10.5 14.5 8.5C14.5 5.5 12 2 12 2Z"/>
+									<path d="M7 8C7 8 4.5 10 4.5 12.5C4.5 14.5 6 16 7.5 16C8.5 16 9.5 15.5 10 14.5" opacity="0.8"/>
+									<path d="M17 8C17 8 19.5 10 19.5 12.5C19.5 14.5 18 16 16.5 16C15.5 16 14.5 15.5 14 14.5" opacity="0.8"/>
+									<path d="M12 12V22" stroke="currentColor" stroke-width="2" fill="none"/>
+								</svg>
+								Zen Mode by Default
+							</p>
+							<p class="text-sm text-gray-500 dark:text-gray-400">
+								Start all new notes in distraction-free Zen mode
+							</p>
+						</div>
+						<button
+							onclick={() => updateSettings({ zen_mode_default: !(userData?.settings.zen_mode_default ?? false) })}
+							class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2
+								{userData?.settings.zen_mode_default ? 'bg-pink-500' : 'bg-gray-300'}"
+							role="switch"
+							aria-checked={userData?.settings.zen_mode_default ?? false}
+						>
+							<span
+								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+									{userData?.settings.zen_mode_default ? 'translate-x-6' : 'translate-x-1'}"
+							></span>
+						</button>
+					</div>
 				</div>
 			</div>
 

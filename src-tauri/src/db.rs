@@ -331,12 +331,76 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             sms_notifications INTEGER DEFAULT 0,
             two_factor_enabled INTEGER DEFAULT 0,
             two_factor_secret TEXT,
+            zen_mode_default INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now', 'localtime')),
             updated_at TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         );
 
+        -- Patient lists (custom patient groupings per user)
+        CREATE TABLE IF NOT EXISTS patient_lists (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            color TEXT DEFAULT '#3B82F6',
+            icon TEXT DEFAULT 'fa-list',
+            is_default INTEGER DEFAULT 0,
+            sort_order INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            updated_at TEXT DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        -- Patient list members (join table)
+        CREATE TABLE IF NOT EXISTS patient_list_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id INTEGER NOT NULL,
+            patient_id INTEGER NOT NULL,
+            added_at TEXT DEFAULT (datetime('now', 'localtime')),
+            notes TEXT,
+            FOREIGN KEY (list_id) REFERENCES patient_lists(id) ON DELETE CASCADE,
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            UNIQUE(list_id, patient_id)
+        );
+
+        -- Patient list columns (custom columns for each list)
+        CREATE TABLE IF NOT EXISTS patient_list_columns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            list_id INTEGER NOT NULL,
+            column_key TEXT NOT NULL,
+            column_label TEXT NOT NULL,
+            column_type TEXT DEFAULT 'text',
+            is_visible INTEGER DEFAULT 1,
+            sort_order INTEGER DEFAULT 0,
+            width INTEGER DEFAULT 150,
+            FOREIGN KEY (list_id) REFERENCES patient_lists(id) ON DELETE CASCADE
+        );
+
+        -- Prescriptions table (tracks prescription history)
+        CREATE TABLE IF NOT EXISTS prescriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER NOT NULL,
+            medication_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            days_supply INTEGER NOT NULL,
+            refills INTEGER DEFAULT 0,
+            sig TEXT NOT NULL,
+            pharmacy TEXT,
+            prescriber_id INTEGER,
+            status TEXT DEFAULT 'sent',
+            prescribed_date TEXT DEFAULT (datetime('now', 'localtime')),
+            filled_date TEXT,
+            notes TEXT,
+            created_at TEXT DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+            FOREIGN KEY (medication_id) REFERENCES medications(id) ON DELETE CASCADE,
+            FOREIGN KEY (prescriber_id) REFERENCES users(id) ON DELETE SET NULL
+        );
+
         -- Indexes for performance
+        CREATE INDEX IF NOT EXISTS idx_prescriptions_patient ON prescriptions(patient_id);
+        CREATE INDEX IF NOT EXISTS idx_prescriptions_medication ON prescriptions(medication_id);
         CREATE INDEX IF NOT EXISTS idx_diagnoses_patient ON diagnoses(patient_id);
         CREATE INDEX IF NOT EXISTS idx_medications_patient ON medications(patient_id);
         CREATE INDEX IF NOT EXISTS idx_vitals_patient_date ON vitals(patient_id, recorded_at);
@@ -346,6 +410,154 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
         CREATE INDEX IF NOT EXISTS idx_timeline_patient_date ON timeline_events(patient_id, event_date);
         CREATE INDEX IF NOT EXISTS idx_user_education_user ON user_education(user_id);
         CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
+        CREATE INDEX IF NOT EXISTS idx_patient_lists_user ON patient_lists(user_id);
+        CREATE INDEX IF NOT EXISTS idx_patient_list_members_list ON patient_list_members(list_id);
+        CREATE INDEX IF NOT EXISTS idx_patient_list_columns_list ON patient_list_columns(list_id);
+
+        -- FTS5 Full-Text Search virtual tables for fast global search
+        CREATE VIRTUAL TABLE IF NOT EXISTS patients_fts USING fts5(
+            patient_id UNINDEXED,
+            first_name,
+            last_name,
+            phone,
+            email,
+            address,
+            ai_summary,
+            content='patients',
+            content_rowid='id'
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS encounters_fts USING fts5(
+            encounter_id UNINDEXED,
+            patient_id UNINDEXED,
+            encounter_type,
+            chief_complaint,
+            summary,
+            note_content,
+            provider,
+            content='encounters',
+            content_rowid='id'
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS diagnoses_fts USING fts5(
+            diagnosis_id UNINDEXED,
+            patient_id UNINDEXED,
+            icd_code,
+            description,
+            category,
+            notes,
+            content='diagnoses',
+            content_rowid='id'
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS medications_fts USING fts5(
+            medication_id UNINDEXED,
+            patient_id UNINDEXED,
+            name,
+            dosage,
+            frequency,
+            prescriber,
+            notes,
+            content='medications',
+            content_rowid='id'
+        );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS labs_fts USING fts5(
+            lab_id UNINDEXED,
+            patient_id UNINDEXED,
+            test_name,
+            result,
+            unit,
+            notes,
+            content='labs',
+            content_rowid='id'
+        );
+
+        -- Triggers to keep FTS tables in sync with source tables
+        CREATE TRIGGER IF NOT EXISTS patients_ai AFTER INSERT ON patients BEGIN
+            INSERT INTO patients_fts(rowid, patient_id, first_name, last_name, phone, email, address, ai_summary)
+            VALUES (new.id, new.id, new.first_name, new.last_name, new.phone, new.email, new.address, new.ai_summary);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS patients_ad AFTER DELETE ON patients BEGIN
+            INSERT INTO patients_fts(patients_fts, rowid, patient_id, first_name, last_name, phone, email, address, ai_summary)
+            VALUES ('delete', old.id, old.id, old.first_name, old.last_name, old.phone, old.email, old.address, old.ai_summary);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS patients_au AFTER UPDATE ON patients BEGIN
+            INSERT INTO patients_fts(patients_fts, rowid, patient_id, first_name, last_name, phone, email, address, ai_summary)
+            VALUES ('delete', old.id, old.id, old.first_name, old.last_name, old.phone, old.email, old.address, old.ai_summary);
+            INSERT INTO patients_fts(rowid, patient_id, first_name, last_name, phone, email, address, ai_summary)
+            VALUES (new.id, new.id, new.first_name, new.last_name, new.phone, new.email, new.address, new.ai_summary);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS encounters_ai AFTER INSERT ON encounters BEGIN
+            INSERT INTO encounters_fts(rowid, encounter_id, patient_id, encounter_type, chief_complaint, summary, note_content, provider)
+            VALUES (new.id, new.id, new.patient_id, new.encounter_type, new.chief_complaint, new.summary, new.note_content, new.provider);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS encounters_ad AFTER DELETE ON encounters BEGIN
+            INSERT INTO encounters_fts(encounters_fts, rowid, encounter_id, patient_id, encounter_type, chief_complaint, summary, note_content, provider)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.encounter_type, old.chief_complaint, old.summary, old.note_content, old.provider);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS encounters_au AFTER UPDATE ON encounters BEGIN
+            INSERT INTO encounters_fts(encounters_fts, rowid, encounter_id, patient_id, encounter_type, chief_complaint, summary, note_content, provider)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.encounter_type, old.chief_complaint, old.summary, old.note_content, old.provider);
+            INSERT INTO encounters_fts(rowid, encounter_id, patient_id, encounter_type, chief_complaint, summary, note_content, provider)
+            VALUES (new.id, new.id, new.patient_id, new.encounter_type, new.chief_complaint, new.summary, new.note_content, new.provider);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS diagnoses_ai AFTER INSERT ON diagnoses BEGIN
+            INSERT INTO diagnoses_fts(rowid, diagnosis_id, patient_id, icd_code, description, category, notes)
+            VALUES (new.id, new.id, new.patient_id, new.icd_code, new.description, new.category, new.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS diagnoses_ad AFTER DELETE ON diagnoses BEGIN
+            INSERT INTO diagnoses_fts(diagnoses_fts, rowid, diagnosis_id, patient_id, icd_code, description, category, notes)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.icd_code, old.description, old.category, old.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS diagnoses_au AFTER UPDATE ON diagnoses BEGIN
+            INSERT INTO diagnoses_fts(diagnoses_fts, rowid, diagnosis_id, patient_id, icd_code, description, category, notes)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.icd_code, old.description, old.category, old.notes);
+            INSERT INTO diagnoses_fts(rowid, diagnosis_id, patient_id, icd_code, description, category, notes)
+            VALUES (new.id, new.id, new.patient_id, new.icd_code, new.description, new.category, new.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS medications_ai AFTER INSERT ON medications BEGIN
+            INSERT INTO medications_fts(rowid, medication_id, patient_id, name, dosage, frequency, prescriber, notes)
+            VALUES (new.id, new.id, new.patient_id, new.name, new.dosage, new.frequency, new.prescriber, new.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS medications_ad AFTER DELETE ON medications BEGIN
+            INSERT INTO medications_fts(medications_fts, rowid, medication_id, patient_id, name, dosage, frequency, prescriber, notes)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.name, old.dosage, old.frequency, old.prescriber, old.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS medications_au AFTER UPDATE ON medications BEGIN
+            INSERT INTO medications_fts(medications_fts, rowid, medication_id, patient_id, name, dosage, frequency, prescriber, notes)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.name, old.dosage, old.frequency, old.prescriber, old.notes);
+            INSERT INTO medications_fts(rowid, medication_id, patient_id, name, dosage, frequency, prescriber, notes)
+            VALUES (new.id, new.id, new.patient_id, new.name, new.dosage, new.frequency, new.prescriber, new.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS labs_ai AFTER INSERT ON labs BEGIN
+            INSERT INTO labs_fts(rowid, lab_id, patient_id, test_name, result, unit, notes)
+            VALUES (new.id, new.id, new.patient_id, new.test_name, new.result, new.unit, new.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS labs_ad AFTER DELETE ON labs BEGIN
+            INSERT INTO labs_fts(labs_fts, rowid, lab_id, patient_id, test_name, result, unit, notes)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.test_name, old.result, old.unit, old.notes);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS labs_au AFTER UPDATE ON labs BEGIN
+            INSERT INTO labs_fts(labs_fts, rowid, lab_id, patient_id, test_name, result, unit, notes)
+            VALUES ('delete', old.id, old.id, old.patient_id, old.test_name, old.result, old.unit, old.notes);
+            INSERT INTO labs_fts(rowid, lab_id, patient_id, test_name, result, unit, notes)
+            VALUES (new.id, new.id, new.patient_id, new.test_name, new.result, new.unit, new.notes);
+        END;
         "
     )?;
 
@@ -378,7 +590,393 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
         let _ = conn.execute("ALTER TABLE diagnoses ADD COLUMN category TEXT", []);
     }
 
+    // Add zen_mode_default column to user_settings table if it doesn't exist
+    let has_zen_mode: bool = conn
+        .prepare("SELECT zen_mode_default FROM user_settings LIMIT 1")
+        .is_ok();
+    if !has_zen_mode {
+        let _ = conn.execute("ALTER TABLE user_settings ADD COLUMN zen_mode_default INTEGER DEFAULT 0", []);
+    }
+
+    // Rebuild FTS indexes for existing data
+    rebuild_fts_indexes(&conn)?;
+
     Ok(conn)
+}
+
+// ============ FTS Search Functions ============
+
+/// Rebuild FTS indexes from existing data
+pub fn rebuild_fts_indexes(conn: &Connection) -> Result<()> {
+    // Clear and rebuild patients_fts
+    let _ = conn.execute("DELETE FROM patients_fts", []);
+    let _ = conn.execute(
+        "INSERT INTO patients_fts(rowid, patient_id, first_name, last_name, phone, email, address, ai_summary)
+         SELECT id, id, first_name, last_name, phone, email, address, ai_summary FROM patients",
+        []
+    );
+
+    // Clear and rebuild encounters_fts
+    let _ = conn.execute("DELETE FROM encounters_fts", []);
+    let _ = conn.execute(
+        "INSERT INTO encounters_fts(rowid, encounter_id, patient_id, encounter_type, chief_complaint, summary, note_content, provider)
+         SELECT id, id, patient_id, encounter_type, chief_complaint, summary, note_content, provider FROM encounters",
+        []
+    );
+
+    // Clear and rebuild diagnoses_fts
+    let _ = conn.execute("DELETE FROM diagnoses_fts", []);
+    let _ = conn.execute(
+        "INSERT INTO diagnoses_fts(rowid, diagnosis_id, patient_id, icd_code, description, category, notes)
+         SELECT id, id, patient_id, icd_code, description, category, notes FROM diagnoses",
+        []
+    );
+
+    // Clear and rebuild medications_fts
+    let _ = conn.execute("DELETE FROM medications_fts", []);
+    let _ = conn.execute(
+        "INSERT INTO medications_fts(rowid, medication_id, patient_id, name, dosage, frequency, prescriber, notes)
+         SELECT id, id, patient_id, name, dosage, frequency, prescriber, notes FROM medications",
+        []
+    );
+
+    // Clear and rebuild labs_fts
+    let _ = conn.execute("DELETE FROM labs_fts", []);
+    let _ = conn.execute(
+        "INSERT INTO labs_fts(rowid, lab_id, patient_id, test_name, result, unit, notes)
+         SELECT id, id, patient_id, test_name, result, unit, notes FROM labs",
+        []
+    );
+
+    Ok(())
+}
+
+/// Search result item with type information
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchResult {
+    pub result_type: String,  // "patient", "encounter", "diagnosis", "medication", "lab"
+    pub id: i64,
+    pub patient_id: Option<i64>,
+    pub title: String,
+    pub subtitle: Option<String>,
+    pub snippet: Option<String>,
+    pub rank: f64,
+}
+
+/// Global search across all FTS tables
+pub fn global_search(conn: &Connection, query: &str, limit: i64) -> Result<Vec<SearchResult>> {
+    let mut results: Vec<SearchResult> = Vec::new();
+
+    // Escape the query for FTS5 - wrap each word with quotes to handle special chars
+    let escaped_query = query
+        .split_whitespace()
+        .map(|word| format!("\"{}\"*", word.replace("\"", "\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if escaped_query.is_empty() {
+        return Ok(results);
+    }
+
+    // Search patients
+    let mut stmt = conn.prepare(
+        "SELECT patient_id, first_name, last_name, phone, snippet(patients_fts, 4, '<mark>', '</mark>', '...', 32), rank
+         FROM patients_fts WHERE patients_fts MATCH ?1
+         ORDER BY rank LIMIT ?2"
+    )?;
+
+    let patient_results = stmt.query_map(params![&escaped_query, limit], |row| {
+        Ok(SearchResult {
+            result_type: "patient".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(row.get(0)?),
+            title: format!("{} {}", row.get::<_, String>(1)?, row.get::<_, String>(2)?),
+            subtitle: row.get(3).ok(),
+            snippet: row.get(4).ok(),
+            rank: row.get(5)?,
+        })
+    })?;
+
+    for result in patient_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search encounters
+    let mut stmt = conn.prepare(
+        "SELECT encounter_id, patient_id, encounter_type, chief_complaint, snippet(encounters_fts, 5, '<mark>', '</mark>', '...', 32), rank
+         FROM encounters_fts WHERE encounters_fts MATCH ?1
+         ORDER BY rank LIMIT ?2"
+    )?;
+
+    let encounter_results = stmt.query_map(params![&escaped_query, limit], |row| {
+        Ok(SearchResult {
+            result_type: "encounter".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(row.get(1)?),
+            title: row.get::<_, Option<String>>(3)?.unwrap_or_else(|| row.get::<_, String>(2).unwrap_or_default()),
+            subtitle: Some(row.get::<_, String>(2)?),
+            snippet: row.get(4).ok(),
+            rank: row.get(5)?,
+        })
+    })?;
+
+    for result in encounter_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search diagnoses
+    let mut stmt = conn.prepare(
+        "SELECT diagnosis_id, patient_id, icd_code, description, snippet(diagnoses_fts, 3, '<mark>', '</mark>', '...', 32), rank
+         FROM diagnoses_fts WHERE diagnoses_fts MATCH ?1
+         ORDER BY rank LIMIT ?2"
+    )?;
+
+    let diagnosis_results = stmt.query_map(params![&escaped_query, limit], |row| {
+        Ok(SearchResult {
+            result_type: "diagnosis".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(row.get(1)?),
+            title: row.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            subtitle: row.get(2).ok(),
+            snippet: row.get(4).ok(),
+            rank: row.get(5)?,
+        })
+    })?;
+
+    for result in diagnosis_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search medications
+    let mut stmt = conn.prepare(
+        "SELECT medication_id, patient_id, name, dosage, snippet(medications_fts, 2, '<mark>', '</mark>', '...', 32), rank
+         FROM medications_fts WHERE medications_fts MATCH ?1
+         ORDER BY rank LIMIT ?2"
+    )?;
+
+    let med_results = stmt.query_map(params![&escaped_query, limit], |row| {
+        Ok(SearchResult {
+            result_type: "medication".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(row.get(1)?),
+            title: row.get::<_, String>(2)?,
+            subtitle: row.get(3).ok(),
+            snippet: row.get(4).ok(),
+            rank: row.get(5)?,
+        })
+    })?;
+
+    for result in med_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search labs
+    let mut stmt = conn.prepare(
+        "SELECT lab_id, patient_id, test_name, result, snippet(labs_fts, 2, '<mark>', '</mark>', '...', 32), rank
+         FROM labs_fts WHERE labs_fts MATCH ?1
+         ORDER BY rank LIMIT ?2"
+    )?;
+
+    let lab_results = stmt.query_map(params![&escaped_query, limit], |row| {
+        Ok(SearchResult {
+            result_type: "lab".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(row.get(1)?),
+            title: row.get::<_, String>(2)?,
+            subtitle: row.get(3).ok(),
+            snippet: row.get(4).ok(),
+            rank: row.get(5)?,
+        })
+    })?;
+
+    for result in lab_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Sort all results by rank (lower is better in FTS5)
+    results.sort_by(|a, b| a.rank.partial_cmp(&b.rank).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Limit total results
+    results.truncate(limit as usize);
+
+    Ok(results)
+}
+
+/// Search within a specific patient's data
+pub fn search_patient_data(conn: &Connection, patient_id: i64, query: &str, limit: i64) -> Result<Vec<SearchResult>> {
+    let mut results: Vec<SearchResult> = Vec::new();
+
+    let escaped_query = query
+        .split_whitespace()
+        .map(|word| format!("\"{}\"*", word.replace("\"", "\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    if escaped_query.is_empty() {
+        return Ok(results);
+    }
+
+    // Search encounters for this patient
+    let mut stmt = conn.prepare(
+        "SELECT encounter_id, encounter_type, chief_complaint, snippet(encounters_fts, 5, '<mark>', '</mark>', '...', 32), rank
+         FROM encounters_fts WHERE encounters_fts MATCH ?1 AND patient_id = ?2
+         ORDER BY rank LIMIT ?3"
+    )?;
+
+    let encounter_results = stmt.query_map(params![&escaped_query, patient_id, limit], |row| {
+        Ok(SearchResult {
+            result_type: "encounter".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(patient_id),
+            title: row.get::<_, Option<String>>(2)?.unwrap_or_else(|| row.get::<_, String>(1).unwrap_or_default()),
+            subtitle: Some(row.get::<_, String>(1)?),
+            snippet: row.get(3).ok(),
+            rank: row.get(4)?,
+        })
+    })?;
+
+    for result in encounter_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search diagnoses for this patient
+    let mut stmt = conn.prepare(
+        "SELECT diagnosis_id, icd_code, description, snippet(diagnoses_fts, 3, '<mark>', '</mark>', '...', 32), rank
+         FROM diagnoses_fts WHERE diagnoses_fts MATCH ?1 AND patient_id = ?2
+         ORDER BY rank LIMIT ?3"
+    )?;
+
+    let diagnosis_results = stmt.query_map(params![&escaped_query, patient_id, limit], |row| {
+        Ok(SearchResult {
+            result_type: "diagnosis".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(patient_id),
+            title: row.get::<_, Option<String>>(2)?.unwrap_or_default(),
+            subtitle: row.get(1).ok(),
+            snippet: row.get(3).ok(),
+            rank: row.get(4)?,
+        })
+    })?;
+
+    for result in diagnosis_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search medications for this patient
+    let mut stmt = conn.prepare(
+        "SELECT medication_id, name, dosage, snippet(medications_fts, 2, '<mark>', '</mark>', '...', 32), rank
+         FROM medications_fts WHERE medications_fts MATCH ?1 AND patient_id = ?2
+         ORDER BY rank LIMIT ?3"
+    )?;
+
+    let med_results = stmt.query_map(params![&escaped_query, patient_id, limit], |row| {
+        Ok(SearchResult {
+            result_type: "medication".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(patient_id),
+            title: row.get::<_, String>(1)?,
+            subtitle: row.get(2).ok(),
+            snippet: row.get(3).ok(),
+            rank: row.get(4)?,
+        })
+    })?;
+
+    for result in med_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Search labs for this patient
+    let mut stmt = conn.prepare(
+        "SELECT lab_id, test_name, result, snippet(labs_fts, 2, '<mark>', '</mark>', '...', 32), rank
+         FROM labs_fts WHERE labs_fts MATCH ?1 AND patient_id = ?2
+         ORDER BY rank LIMIT ?3"
+    )?;
+
+    let lab_results = stmt.query_map(params![&escaped_query, patient_id, limit], |row| {
+        Ok(SearchResult {
+            result_type: "lab".to_string(),
+            id: row.get(0)?,
+            patient_id: Some(patient_id),
+            title: row.get::<_, String>(1)?,
+            subtitle: row.get(2).ok(),
+            snippet: row.get(3).ok(),
+            rank: row.get(4)?,
+        })
+    })?;
+
+    for result in lab_results {
+        if let Ok(r) = result {
+            results.push(r);
+        }
+    }
+
+    // Sort by rank
+    results.sort_by(|a, b| a.rank.partial_cmp(&b.rank).unwrap_or(std::cmp::Ordering::Equal));
+    results.truncate(limit as usize);
+
+    Ok(results)
+}
+
+/// Quick patient search (for patient list filtering)
+pub fn quick_search_patients(conn: &Connection, query: &str, limit: i64) -> Result<Vec<Patient>> {
+    if query.trim().is_empty() {
+        return get_all_patients(conn);
+    }
+
+    let escaped_query = query
+        .split_whitespace()
+        .map(|word| format!("\"{}\"*", word.replace("\"", "\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let mut stmt = conn.prepare(
+        "SELECT p.id, p.first_name, p.last_name, p.dob, p.sex, p.gender, p.address, p.phone, p.email,
+                p.photo_url, p.ai_summary, p.preferred_pharmacy, p.insurance_provider,
+                p.insurance_policy_number, p.insurance_group_number
+         FROM patients p
+         INNER JOIN patients_fts fts ON p.id = fts.patient_id
+         WHERE patients_fts MATCH ?1
+         ORDER BY fts.rank
+         LIMIT ?2"
+    )?;
+
+    let patients = stmt.query_map(params![&escaped_query, limit], |row| {
+        Ok(Patient {
+            id: Some(row.get(0)?),
+            first_name: row.get(1)?,
+            last_name: row.get(2)?,
+            dob: row.get(3)?,
+            sex: row.get(4)?,
+            gender: row.get(5)?,
+            address: row.get(6)?,
+            phone: row.get(7)?,
+            email: row.get(8)?,
+            photo_url: row.get(9)?,
+            ai_summary: row.get(10)?,
+            preferred_pharmacy: row.get(11)?,
+            insurance_provider: row.get(12)?,
+            insurance_policy_number: row.get(13)?,
+            insurance_group_number: row.get(14)?,
+        })
+    })?;
+
+    patients.collect()
 }
 
 // ============ Patient CRUD Operations ============
@@ -573,6 +1171,25 @@ pub struct TimelineEvent {
     pub color: Option<String>,
 }
 
+// ============ Prescription Struct ============
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Prescription {
+    pub id: Option<i64>,
+    pub patient_id: i64,
+    pub medication_id: i64,
+    pub quantity: i32,
+    pub days_supply: i32,
+    pub refills: i32,
+    pub sig: String,
+    pub pharmacy: Option<String>,
+    pub prescriber_id: Option<i64>,
+    pub status: Option<String>,
+    pub prescribed_date: Option<String>,
+    pub filled_date: Option<String>,
+    pub notes: Option<String>,
+}
+
 // ============ User/Provider Structs ============
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -623,6 +1240,7 @@ pub struct UserSettings {
     pub email_notifications: Option<bool>,
     pub sms_notifications: Option<bool>,
     pub two_factor_enabled: Option<bool>,
+    pub zen_mode_default: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1128,6 +1746,28 @@ pub fn get_allergies_for_patient(conn: &Connection, patient_id: i64) -> Result<V
     allergies.collect()
 }
 
+pub fn create_allergy(conn: &Connection, allergy: &Allergy) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO allergies (patient_id, allergen, reaction, severity, status)
+         VALUES (?1, ?2, ?3, ?4, 'active')",
+        params![allergy.patient_id, allergy.allergen, allergy.reaction, allergy.severity],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_allergy(conn: &Connection, allergy: &Allergy) -> Result<()> {
+    conn.execute(
+        "UPDATE allergies SET allergen = ?1, reaction = ?2, severity = ?3 WHERE id = ?4",
+        params![allergy.allergen, allergy.reaction, allergy.severity, allergy.id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_allergy(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM allergies WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
 // ============ Vaccinations CRUD Operations ============
 
 pub fn get_vaccinations_for_patient(conn: &Connection, patient_id: i64) -> Result<Vec<Vaccination>> {
@@ -1147,6 +1787,28 @@ pub fn get_vaccinations_for_patient(conn: &Connection, patient_id: i64) -> Resul
     })?;
 
     vaccinations.collect()
+}
+
+pub fn create_vaccination(conn: &Connection, vax: &Vaccination) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO vaccinations (patient_id, vaccine_name, date_given)
+         VALUES (?1, ?2, ?3)",
+        params![vax.patient_id, vax.vaccine_name, vax.date_given],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_vaccination(conn: &Connection, vax: &Vaccination) -> Result<()> {
+    conn.execute(
+        "UPDATE vaccinations SET vaccine_name = ?1, date_given = ?2 WHERE id = ?3",
+        params![vax.vaccine_name, vax.date_given, vax.id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_vaccination(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM vaccinations WHERE id = ?1", params![id])?;
+    Ok(())
 }
 
 // ============ Social History CRUD Operations ============
@@ -1170,6 +1832,28 @@ pub fn get_social_history_for_patient(conn: &Connection, patient_id: i64) -> Res
     history.collect()
 }
 
+pub fn create_social_history(conn: &Connection, history: &SocialHistory) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO social_history (patient_id, category, detail, status)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![history.patient_id, history.category, history.detail, history.status],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_social_history(conn: &Connection, history: &SocialHistory) -> Result<()> {
+    conn.execute(
+        "UPDATE social_history SET category = ?1, detail = ?2, status = ?3 WHERE id = ?4",
+        params![history.category, history.detail, history.status, history.id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_social_history(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM social_history WHERE id = ?1", params![id])?;
+    Ok(())
+}
+
 // ============ Family History CRUD Operations ============
 
 pub fn get_family_history_for_patient(conn: &Connection, patient_id: i64) -> Result<Vec<FamilyHistory>> {
@@ -1189,6 +1873,28 @@ pub fn get_family_history_for_patient(conn: &Connection, patient_id: i64) -> Res
     })?;
 
     history.collect()
+}
+
+pub fn create_family_history(conn: &Connection, history: &FamilyHistory) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO family_history (patient_id, relation, condition, age_at_onset)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![history.patient_id, history.relation, history.condition, history.age_at_onset],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn update_family_history(conn: &Connection, history: &FamilyHistory) -> Result<()> {
+    conn.execute(
+        "UPDATE family_history SET relation = ?1, condition = ?2, age_at_onset = ?3 WHERE id = ?4",
+        params![history.relation, history.condition, history.age_at_onset, history.id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_family_history(conn: &Connection, id: i64) -> Result<()> {
+    conn.execute("DELETE FROM family_history WHERE id = ?1", params![id])?;
+    Ok(())
 }
 
 // ============ Todos CRUD Operations ============
@@ -1486,7 +2192,7 @@ pub fn create_user_badge(conn: &Connection, badge: &UserBadge) -> Result<i64> {
 
 pub fn get_settings_for_user(conn: &Connection, user_id: i64) -> Result<Option<UserSettings>> {
     let mut stmt = conn.prepare(
-        "SELECT id, user_id, language, notifications_enabled, email_notifications, sms_notifications, two_factor_enabled
+        "SELECT id, user_id, language, notifications_enabled, email_notifications, sms_notifications, two_factor_enabled, zen_mode_default
          FROM user_settings WHERE user_id = ?1"
     )?;
 
@@ -1497,6 +2203,7 @@ pub fn get_settings_for_user(conn: &Connection, user_id: i64) -> Result<Option<U
         let email_int: Option<i32> = row.get(4)?;
         let sms_int: Option<i32> = row.get(5)?;
         let tfa_int: Option<i32> = row.get(6)?;
+        let zen_int: Option<i32> = row.get(7)?;
 
         Ok(Some(UserSettings {
             id: Some(row.get(0)?),
@@ -1506,6 +2213,7 @@ pub fn get_settings_for_user(conn: &Connection, user_id: i64) -> Result<Option<U
             email_notifications: email_int.map(|v| v != 0),
             sms_notifications: sms_int.map(|v| v != 0),
             two_factor_enabled: tfa_int.map(|v| v != 0),
+            zen_mode_default: zen_int.map(|v| v != 0),
         }))
     } else {
         // Create default settings if none exist
@@ -1521,6 +2229,7 @@ pub fn get_settings_for_user(conn: &Connection, user_id: i64) -> Result<Option<U
             email_notifications: Some(true),
             sms_notifications: Some(false),
             two_factor_enabled: Some(false),
+            zen_mode_default: Some(false),
         }))
     }
 }
@@ -1533,14 +2242,16 @@ pub fn update_user_settings(conn: &Connection, settings: &UserSettings) -> Resul
             email_notifications = ?3,
             sms_notifications = ?4,
             two_factor_enabled = ?5,
+            zen_mode_default = ?6,
             updated_at = datetime('now', 'localtime')
-         WHERE user_id = ?6",
+         WHERE user_id = ?7",
         params![
             settings.language,
             settings.notifications_enabled.map(|b| if b { 1 } else { 0 }),
             settings.email_notifications.map(|b| if b { 1 } else { 0 }),
             settings.sms_notifications.map(|b| if b { 1 } else { 0 }),
             settings.two_factor_enabled.map(|b| if b { 1 } else { 0 }),
+            settings.zen_mode_default.map(|b| if b { 1 } else { 0 }),
             settings.user_id,
         ],
     )?;
@@ -1565,6 +2276,7 @@ pub fn get_user_full_data(conn: &Connection, user_id: i64) -> Result<Option<User
         email_notifications: Some(true),
         sms_notifications: Some(false),
         two_factor_enabled: Some(false),
+        zen_mode_default: Some(false),
     });
 
     Ok(Some(UserFullData {
@@ -1592,6 +2304,7 @@ pub fn get_current_user_full_data(conn: &Connection) -> Result<Option<UserFullDa
         email_notifications: Some(true),
         sms_notifications: Some(false),
         two_factor_enabled: Some(false),
+        zen_mode_default: Some(false),
     });
 
     Ok(Some(UserFullData {
@@ -2090,6 +2803,499 @@ pub fn seed_patient_detail_test_data(conn: &Connection, patient_id: i64, force_r
          VALUES (?1, 'lab_result', 'A1c slightly elevated at 5.8%', '2024-05-10', 'fa-flask', 'orange')",
         params![patient_id],
     )?;
+
+    Ok(())
+}
+
+// ============================================================================
+// Patient Lists
+// ============================================================================
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PatientList {
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub color: Option<String>,
+    pub icon: Option<String>,
+    pub is_default: bool,
+    pub sort_order: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PatientListMember {
+    pub id: Option<i64>,
+    pub list_id: i64,
+    pub patient_id: i64,
+    pub added_at: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PatientListColumn {
+    pub id: Option<i64>,
+    pub list_id: i64,
+    pub column_key: String,
+    pub column_label: String,
+    pub column_type: Option<String>,
+    pub is_visible: bool,
+    pub sort_order: i64,
+    pub width: Option<i64>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PatientListWithPatients {
+    pub list: PatientList,
+    pub columns: Vec<PatientListColumn>,
+    pub patients: Vec<Patient>,
+}
+
+// Default columns for patient lists
+pub fn get_default_columns() -> Vec<(&'static str, &'static str, &'static str)> {
+    vec![
+        ("name", "Name", "text"),
+        ("dob", "DOB", "date"),
+        ("sex", "Sex", "text"),
+        ("phone", "Phone", "text"),
+        ("last_visit", "Last Visit", "date"),
+        ("next_appointment", "Next Appt", "date"),
+        ("primary_diagnosis", "Primary Dx", "text"),
+    ]
+}
+
+pub fn create_patient_list(conn: &Connection, list: &PatientList) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO patient_lists (user_id, name, description, color, icon, is_default, sort_order)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![
+            list.user_id,
+            list.name,
+            list.description,
+            list.color,
+            list.icon,
+            list.is_default,
+            list.sort_order,
+        ],
+    )?;
+    let list_id = conn.last_insert_rowid();
+
+    // Add default columns
+    for (i, (key, label, col_type)) in get_default_columns().iter().enumerate() {
+        conn.execute(
+            "INSERT INTO patient_list_columns (list_id, column_key, column_label, column_type, is_visible, sort_order)
+             VALUES (?1, ?2, ?3, ?4, 1, ?5)",
+            params![list_id, key, label, col_type, i as i64],
+        )?;
+    }
+
+    Ok(list_id)
+}
+
+pub fn get_patient_lists_for_user(conn: &Connection, user_id: i64) -> Result<Vec<PatientList>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, name, description, color, icon, is_default, sort_order
+         FROM patient_lists WHERE user_id = ?1 ORDER BY sort_order, name"
+    )?;
+
+    let lists = stmt.query_map(params![user_id], |row| {
+        Ok(PatientList {
+            id: row.get(0)?,
+            user_id: row.get(1)?,
+            name: row.get(2)?,
+            description: row.get(3)?,
+            color: row.get(4)?,
+            icon: row.get(5)?,
+            is_default: row.get(6)?,
+            sort_order: row.get(7)?,
+        })
+    })?.collect::<Result<Vec<_>>>()?;
+
+    Ok(lists)
+}
+
+pub fn get_patient_list_by_id(conn: &Connection, list_id: i64) -> Result<Option<PatientList>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, name, description, color, icon, is_default, sort_order
+         FROM patient_lists WHERE id = ?1"
+    )?;
+
+    let mut rows = stmt.query(params![list_id])?;
+    if let Some(row) = rows.next()? {
+        Ok(Some(PatientList {
+            id: row.get(0)?,
+            user_id: row.get(1)?,
+            name: row.get(2)?,
+            description: row.get(3)?,
+            color: row.get(4)?,
+            icon: row.get(5)?,
+            is_default: row.get(6)?,
+            sort_order: row.get(7)?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
+pub fn update_patient_list(conn: &Connection, list: &PatientList) -> Result<()> {
+    conn.execute(
+        "UPDATE patient_lists SET name = ?1, description = ?2, color = ?3, icon = ?4, sort_order = ?5, updated_at = datetime('now', 'localtime')
+         WHERE id = ?6",
+        params![list.name, list.description, list.color, list.icon, list.sort_order, list.id],
+    )?;
+    Ok(())
+}
+
+pub fn delete_patient_list(conn: &Connection, list_id: i64) -> Result<()> {
+    conn.execute("DELETE FROM patient_lists WHERE id = ?1", params![list_id])?;
+    Ok(())
+}
+
+pub fn get_columns_for_list(conn: &Connection, list_id: i64) -> Result<Vec<PatientListColumn>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, list_id, column_key, column_label, column_type, is_visible, sort_order, width
+         FROM patient_list_columns WHERE list_id = ?1 ORDER BY sort_order"
+    )?;
+
+    let columns = stmt.query_map(params![list_id], |row| {
+        Ok(PatientListColumn {
+            id: row.get(0)?,
+            list_id: row.get(1)?,
+            column_key: row.get(2)?,
+            column_label: row.get(3)?,
+            column_type: row.get(4)?,
+            is_visible: row.get(5)?,
+            sort_order: row.get(6)?,
+            width: row.get(7)?,
+        })
+    })?.collect::<Result<Vec<_>>>()?;
+
+    Ok(columns)
+}
+
+pub fn update_list_columns(conn: &Connection, list_id: i64, columns: &[PatientListColumn]) -> Result<()> {
+    // Delete existing columns
+    conn.execute("DELETE FROM patient_list_columns WHERE list_id = ?1", params![list_id])?;
+
+    // Insert new columns
+    for col in columns {
+        conn.execute(
+            "INSERT INTO patient_list_columns (list_id, column_key, column_label, column_type, is_visible, sort_order, width)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![list_id, col.column_key, col.column_label, col.column_type, col.is_visible, col.sort_order, col.width],
+        )?;
+    }
+
+    Ok(())
+}
+
+pub fn add_patient_to_list(conn: &Connection, list_id: i64, patient_id: i64, notes: Option<&str>) -> Result<i64> {
+    conn.execute(
+        "INSERT OR IGNORE INTO patient_list_members (list_id, patient_id, notes)
+         VALUES (?1, ?2, ?3)",
+        params![list_id, patient_id, notes],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+pub fn remove_patient_from_list(conn: &Connection, list_id: i64, patient_id: i64) -> Result<()> {
+    conn.execute(
+        "DELETE FROM patient_list_members WHERE list_id = ?1 AND patient_id = ?2",
+        params![list_id, patient_id],
+    )?;
+    Ok(())
+}
+
+pub fn get_patients_in_list(conn: &Connection, list_id: i64) -> Result<Vec<Patient>> {
+    let mut stmt = conn.prepare(
+        "SELECT p.id, p.first_name, p.last_name, p.dob, p.sex, p.gender, p.address, p.phone, p.email, p.photo_url, p.ai_summary,
+                p.preferred_pharmacy, p.insurance_provider, p.insurance_policy_number, p.insurance_group_number
+         FROM patients p
+         INNER JOIN patient_list_members plm ON p.id = plm.patient_id
+         WHERE plm.list_id = ?1
+         ORDER BY p.last_name, p.first_name"
+    )?;
+
+    let patients = stmt.query_map(params![list_id], |row| {
+        Ok(Patient {
+            id: row.get(0)?,
+            first_name: row.get(1)?,
+            last_name: row.get(2)?,
+            dob: row.get(3)?,
+            sex: row.get(4)?,
+            gender: row.get(5)?,
+            address: row.get(6)?,
+            phone: row.get(7)?,
+            email: row.get(8)?,
+            photo_url: row.get(9)?,
+            ai_summary: row.get(10)?,
+            preferred_pharmacy: row.get(11)?,
+            insurance_provider: row.get(12)?,
+            insurance_policy_number: row.get(13)?,
+            insurance_group_number: row.get(14)?,
+        })
+    })?.collect::<Result<Vec<_>>>()?;
+
+    Ok(patients)
+}
+
+pub fn get_patient_list_with_patients(conn: &Connection, list_id: i64) -> Result<Option<PatientListWithPatients>> {
+    let list = get_patient_list_by_id(conn, list_id)?;
+    if let Some(list) = list {
+        let columns = get_columns_for_list(conn, list_id)?;
+        let patients = get_patients_in_list(conn, list_id)?;
+        Ok(Some(PatientListWithPatients { list, columns, patients }))
+    } else {
+        Ok(None)
+    }
+}
+
+// ============ Prescription Functions ============
+
+/// Create a new prescription
+pub fn create_prescription(conn: &Connection, prescription: &Prescription) -> Result<i64> {
+    conn.execute(
+        "INSERT INTO prescriptions (patient_id, medication_id, quantity, days_supply, refills, sig, pharmacy, prescriber_id, status, notes)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            prescription.patient_id,
+            prescription.medication_id,
+            prescription.quantity,
+            prescription.days_supply,
+            prescription.refills,
+            prescription.sig,
+            prescription.pharmacy,
+            prescription.prescriber_id,
+            prescription.status.as_deref().unwrap_or("sent"),
+            prescription.notes,
+        ],
+    )?;
+    Ok(conn.last_insert_rowid())
+}
+
+/// Create multiple prescriptions at once (batch)
+pub fn create_prescriptions_batch(conn: &Connection, prescriptions: &[Prescription]) -> Result<Vec<i64>> {
+    let mut ids = Vec::new();
+    for rx in prescriptions {
+        let id = create_prescription(conn, rx)?;
+        ids.push(id);
+    }
+    Ok(ids)
+}
+
+/// Get prescriptions for a patient
+pub fn get_prescriptions_for_patient(conn: &Connection, patient_id: i64) -> Result<Vec<Prescription>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, patient_id, medication_id, quantity, days_supply, refills, sig, pharmacy,
+                prescriber_id, status, prescribed_date, filled_date, notes
+         FROM prescriptions WHERE patient_id = ?1 ORDER BY prescribed_date DESC"
+    )?;
+
+    let prescriptions = stmt.query_map(params![patient_id], |row| {
+        Ok(Prescription {
+            id: row.get(0)?,
+            patient_id: row.get(1)?,
+            medication_id: row.get(2)?,
+            quantity: row.get(3)?,
+            days_supply: row.get(4)?,
+            refills: row.get(5)?,
+            sig: row.get(6)?,
+            pharmacy: row.get(7)?,
+            prescriber_id: row.get(8)?,
+            status: row.get(9)?,
+            prescribed_date: row.get(10)?,
+            filled_date: row.get(11)?,
+            notes: row.get(12)?,
+        })
+    })?.collect::<Result<Vec<_>>>()?;
+
+    Ok(prescriptions)
+}
+
+pub fn seed_patient_lists(conn: &Connection, user_id: i64) -> Result<()> {
+    // Check if lists already exist for this user
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM patient_lists WHERE user_id = ?1",
+        params![user_id],
+        |row| row.get(0),
+    )?;
+
+    if count > 0 {
+        return Ok(());
+    }
+
+    // Create diverse patients first
+    let patients_data = vec![
+        // Resident Clinic patients (general outpatient)
+        ("Marcus", "Williams", "1978-05-12", "M", "(555) 234-5678", "marcus.williams@email.com", "456 Oak Street, Springfield, IL 62701"),
+        ("Jennifer", "Garcia", "1985-09-23", "F", "(555) 345-6789", "jgarcia@email.com", "789 Maple Ave, Springfield, IL 62702"),
+        ("Robert", "Chen", "1952-01-30", "M", "(555) 456-7890", "rchen1952@email.com", "321 Pine Road, Springfield, IL 62703"),
+        ("Aisha", "Johnson", "1990-11-15", "F", "(555) 567-8901", "aisha.j@email.com", "654 Elm Court, Springfield, IL 62704"),
+
+        // Pain Clinic patients
+        ("Thomas", "Anderson", "1965-03-08", "M", "(555) 678-9012", "tanderson@email.com", "987 Cedar Lane, Springfield, IL 62705"),
+        ("Maria", "Rodriguez", "1973-07-19", "F", "(555) 789-0123", "mrodriguez@email.com", "147 Birch Drive, Springfield, IL 62706"),
+        ("David", "Kim", "1958-12-04", "M", "(555) 890-1234", "dkim58@email.com", "258 Willow Way, Springfield, IL 62707"),
+
+        // Yellow Team (hospital/inpatient)
+        ("Patricia", "Brown", "1945-06-22", "F", "(555) 901-2345", "pbrown45@email.com", "369 Ash Street, Springfield, IL 62708"),
+        ("James", "Wilson", "1938-02-14", "M", "(555) 012-3456", "jwilson38@email.com", "741 Spruce Ave, Springfield, IL 62709"),
+        ("Linda", "Martinez", "1962-08-31", "F", "(555) 123-4567", "lmartinez@email.com", "852 Walnut Road, Springfield, IL 62710"),
+
+        // Psych Clinic patients
+        ("Emily", "Davis", "1995-04-17", "F", "(555) 234-5679", "edavis95@email.com", "963 Cherry Lane, Springfield, IL 62711"),
+        ("Michael", "Thompson", "1988-10-09", "M", "(555) 345-6780", "mthompson@email.com", "174 Peach Court, Springfield, IL 62712"),
+        ("Sarah", "Lee", "2001-01-25", "F", "(555) 456-7891", "slee2001@email.com", "285 Apple Way, Springfield, IL 62713"),
+    ];
+
+    let mut patient_ids: Vec<i64> = Vec::new();
+
+    for (first, last, dob, sex, phone, email, address) in patients_data {
+        conn.execute(
+            "INSERT INTO patients (first_name, last_name, dob, sex, phone, email, address)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![first, last, dob, sex, phone, email, address],
+        )?;
+        patient_ids.push(conn.last_insert_rowid());
+    }
+
+    // Add some diagnoses for variety
+    // Marcus Williams - Diabetes, Hypertension
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Type 2 Diabetes Mellitus', 'E11.9', 'active', 'Endocrine')",
+        params![patient_ids[0]],
+    )?;
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Essential Hypertension', 'I10', 'active', 'Cardiovascular')",
+        params![patient_ids[0]],
+    )?;
+
+    // Jennifer Garcia - Asthma
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Mild Persistent Asthma', 'J45.30', 'active', 'Respiratory')",
+        params![patient_ids[1]],
+    )?;
+
+    // Thomas Anderson - Chronic pain
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Chronic Low Back Pain', 'M54.5', 'active', 'Musculoskeletal')",
+        params![patient_ids[4]],
+    )?;
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Lumbar Radiculopathy', 'M54.16', 'active', 'Musculoskeletal')",
+        params![patient_ids[4]],
+    )?;
+
+    // Maria Rodriguez - Fibromyalgia
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Fibromyalgia', 'M79.7', 'active', 'Musculoskeletal')",
+        params![patient_ids[5]],
+    )?;
+
+    // Patricia Brown - CHF, COPD (inpatient)
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Heart Failure with reduced EF', 'I50.22', 'active', 'Cardiovascular')",
+        params![patient_ids[7]],
+    )?;
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'COPD with acute exacerbation', 'J44.1', 'active', 'Respiratory')",
+        params![patient_ids[7]],
+    )?;
+
+    // Emily Davis - Depression, Anxiety
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Major Depressive Disorder, recurrent', 'F33.1', 'active', 'Psychiatric')",
+        params![patient_ids[10]],
+    )?;
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Generalized Anxiety Disorder', 'F41.1', 'active', 'Psychiatric')",
+        params![patient_ids[10]],
+    )?;
+
+    // Michael Thompson - Bipolar
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'Bipolar I Disorder', 'F31.9', 'active', 'Psychiatric')",
+        params![patient_ids[11]],
+    )?;
+
+    // Sarah Lee - ADHD
+    conn.execute(
+        "INSERT INTO diagnoses (patient_id, name, icd_code, status, category) VALUES (?1, 'ADHD, Combined Type', 'F90.2', 'active', 'Psychiatric')",
+        params![patient_ids[12]],
+    )?;
+
+    // Create patient lists
+    // 1. Resident Clinic (default)
+    let resident_list = PatientList {
+        id: None,
+        user_id,
+        name: "Resident Clinic".to_string(),
+        description: Some("General outpatient clinic patients".to_string()),
+        color: Some("#3B82F6".to_string()),
+        icon: Some("fa-stethoscope".to_string()),
+        is_default: true,
+        sort_order: 0,
+    };
+    let resident_list_id = create_patient_list(conn, &resident_list)?;
+
+    // Add patients 0-3 to resident clinic
+    for i in 0..4 {
+        add_patient_to_list(conn, resident_list_id, patient_ids[i], None)?;
+    }
+
+    // 2. Pain Clinic
+    let pain_list = PatientList {
+        id: None,
+        user_id,
+        name: "Pain Clinic".to_string(),
+        description: Some("Chronic pain management patients".to_string()),
+        color: Some("#EF4444".to_string()),
+        icon: Some("fa-hand-dots".to_string()),
+        is_default: false,
+        sort_order: 1,
+    };
+    let pain_list_id = create_patient_list(conn, &pain_list)?;
+
+    // Add pain clinic patients 4-6
+    for i in 4..7 {
+        add_patient_to_list(conn, pain_list_id, patient_ids[i], None)?;
+    }
+
+    // 3. Yellow Team
+    let yellow_list = PatientList {
+        id: None,
+        user_id,
+        name: "Yellow Team".to_string(),
+        description: Some("Inpatient medicine team".to_string()),
+        color: Some("#F59E0B".to_string()),
+        icon: Some("fa-hospital".to_string()),
+        is_default: false,
+        sort_order: 2,
+    };
+    let yellow_list_id = create_patient_list(conn, &yellow_list)?;
+
+    // Add inpatient patients 7-9
+    for i in 7..10 {
+        add_patient_to_list(conn, yellow_list_id, patient_ids[i], None)?;
+    }
+
+    // 4. Psych Clinic
+    let psych_list = PatientList {
+        id: None,
+        user_id,
+        name: "Psych Clinic".to_string(),
+        description: Some("Psychiatry outpatient clinic".to_string()),
+        color: Some("#8B5CF6".to_string()),
+        icon: Some("fa-brain".to_string()),
+        is_default: false,
+        sort_order: 3,
+    };
+    let psych_list_id = create_patient_list(conn, &psych_list)?;
+
+    // Add psych patients 10-12
+    for i in 10..13 {
+        add_patient_to_list(conn, psych_list_id, patient_ids[i], None)?;
+    }
 
     Ok(())
 }

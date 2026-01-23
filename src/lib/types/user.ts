@@ -44,6 +44,7 @@ export interface UserSettings {
 	email_notifications: boolean | null;
 	sms_notifications: boolean | null;
 	two_factor_enabled: boolean | null;
+	zen_mode_default: boolean | null;
 }
 
 export interface UserFullData {

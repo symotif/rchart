@@ -89,6 +89,7 @@
 				<DiagnosisMedications
 					diagnoses={patientData.diagnoses}
 					medications={patientData.medications}
+					patientId={patientData.patient.id ?? 0}
 				/>
 			</div>
 			<div class="col-span-1">
@@ -120,6 +121,8 @@
 					vaccinations={patientData.vaccinations}
 					socialHistory={patientData.social_history}
 					familyHistory={patientData.family_history}
+					patientId={patientData.patient.id ?? 0}
+					onDataChange={() => loadPatientData(currentPatientId!)}
 				/>
 			</div>
 

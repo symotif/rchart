@@ -9,11 +9,14 @@
 	import SidebarTab from '../lib/components/SidebarTab.svelte';
 	import ProfileButton from '$lib/components/ProfileButton.svelte';
 	import StatusBar from '$lib/components/StatusBar.svelte';
+	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
 
 	// stores
 	import { SideBarStore, setTab } from '../stores/SideBarStore';
 	import { ThemeStore } from '../stores/ThemeStore';
 	import { TabStore } from '../stores/TabStore';
+	import { SearchStore } from '../stores/SearchStore';
 
 	// App version
 	const appVersion = '0.0.1';
@@ -46,24 +49,28 @@
 
 <div class="overscroll-none bg-gray-300 dark:bg-gray-900 app-container">
 	<!-- top bar -->
-	<section class="flex flex-col absolute top-0 left-20 h-30 w-full pt-3 px-5 bg-white dark:bg-gray-800">
+	<section class="flex flex-col absolute top-0 left-20 h-30 w-full pt-3 px-5 bg-white dark:bg-gray-800 z-40">
 		<!-- the top part of the bar -->
 		<div class="flex flex-row">
-			<!-- search box -->
-			<form class="w-full max-w-md">
+			<!-- search box (opens command palette) -->
+			<button
+				onclick={() => SearchStore.open('global')}
+				class="w-full max-w-md"
+			>
 				<div class="relative flex items-center text-gray-400 focus-within:text-gray-500 dark:text-gray-300 dark:focus-within:text-gray-200">
 					<i class="fa-solid fa-magnifying-glass w-5 h-5 absolute ml-3 pointer-events-none"></i>
-					<input
-						type="text"
-						name="search"
-						placeholder="Search"
-						autocomplete="off"
-						class="w-full pr-3 pl-10 py-2 font-semibold bg-gray-100 dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-block dark:text-gray-100
-								rounded-2xl border-none ring-2 ring-gray-300 dark:ring-gray-600 focus:ring-gray-500 dark:focus:ring-gray-400
-								focus:ring-2"
-					/>
+					<div
+						class="w-full pr-3 pl-10 py-2 font-semibold bg-gray-100 dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-500 dark:text-gray-400
+								rounded-2xl border-none ring-2 ring-gray-300 dark:ring-gray-600 hover:ring-gray-400 dark:hover:ring-gray-500
+								text-left cursor-pointer transition-all flex items-center justify-between"
+					>
+						<span>Search...</span>
+						<kbd class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded text-gray-500 dark:text-gray-400">
+							<span class="text-base">⌘</span>K
+						</kbd>
+					</div>
 				</div>
-			</form>
+			</button>
 
 			<!-- three top buttons -->
 			<div
@@ -135,6 +142,12 @@
 
 	<!-- status bar -->
 	<StatusBar />
+
+	<!-- command palette (global search) -->
+	<CommandPalette />
+
+	<!-- toast notifications -->
+	<ToastContainer />
 </div>
 
 <style>

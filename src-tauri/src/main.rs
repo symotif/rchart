@@ -6,7 +6,7 @@
 
 mod db;
 
-use db::{DbState, Patient, Appointment, AppointmentWithPatient, PatientFullData, Encounter, User, UserFullData, UserSettings};
+use db::{DbState, Patient, Appointment, AppointmentWithPatient, PatientFullData, Encounter, User, UserFullData, UserSettings, SearchResult, Prescription, Allergy, Vaccination, SocialHistory, FamilyHistory};
 use serde::{Deserialize, Serialize};
 use tauri::{State, Manager};
 use std::sync::Mutex;
@@ -71,6 +71,37 @@ fn main() {
             db_update_user_settings,
             db_update_password,
             db_seed_user_data,
+            // Patient list commands
+            db_get_patient_lists,
+            db_get_patient_list,
+            db_create_patient_list,
+            db_update_patient_list,
+            db_delete_patient_list,
+            db_get_patients_in_list,
+            db_add_patient_to_list,
+            db_remove_patient_from_list,
+            db_update_list_columns,
+            db_seed_patient_lists,
+            // Search commands
+            db_global_search,
+            db_search_patient_data,
+            db_quick_search_patients,
+            // Prescription commands
+            db_create_prescriptions,
+            db_get_prescriptions,
+            // History CRUD commands
+            db_create_allergy,
+            db_update_allergy,
+            db_delete_allergy,
+            db_create_vaccination,
+            db_update_vaccination,
+            db_delete_vaccination,
+            db_create_social_history,
+            db_update_social_history,
+            db_delete_social_history,
+            db_create_family_history,
+            db_update_family_history,
+            db_delete_family_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -328,4 +359,179 @@ fn db_seed_user_data(state: State<DbState>) -> Result<String, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     db::seed_user_data(&conn).map_err(|e| e.to_string())?;
     Ok("User data seeded successfully".to_string())
+}
+
+// ============ Patient List Commands ============
+
+#[tauri::command]
+fn db_get_patient_lists(state: State<DbState>, user_id: i64) -> Result<Vec<db::PatientList>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_patient_lists_for_user(&conn, user_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_patient_list(state: State<DbState>, list_id: i64) -> Result<Option<db::PatientListWithPatients>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_patient_list_with_patients(&conn, list_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_create_patient_list(state: State<DbState>, list: db::PatientList) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_patient_list(&conn, &list).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_patient_list(state: State<DbState>, list: db::PatientList) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_patient_list(&conn, &list).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_delete_patient_list(state: State<DbState>, list_id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_patient_list(&conn, list_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_patients_in_list(state: State<DbState>, list_id: i64) -> Result<Vec<db::Patient>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_patients_in_list(&conn, list_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_add_patient_to_list(state: State<DbState>, list_id: i64, patient_id: i64, notes: Option<String>) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::add_patient_to_list(&conn, list_id, patient_id, notes.as_deref()).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_remove_patient_from_list(state: State<DbState>, list_id: i64, patient_id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::remove_patient_from_list(&conn, list_id, patient_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_list_columns(state: State<DbState>, list_id: i64, columns: Vec<db::PatientListColumn>) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_list_columns(&conn, list_id, &columns).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_seed_patient_lists(state: State<DbState>, user_id: i64) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::seed_patient_lists(&conn, user_id).map_err(|e| e.to_string())?;
+    Ok("Patient lists seeded successfully".to_string())
+}
+
+// ============ Search Commands ============
+
+#[tauri::command]
+fn db_global_search(state: State<DbState>, query: String, limit: Option<i64>) -> Result<Vec<SearchResult>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::global_search(&conn, &query, limit.unwrap_or(20)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_search_patient_data(state: State<DbState>, patient_id: i64, query: String, limit: Option<i64>) -> Result<Vec<SearchResult>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::search_patient_data(&conn, patient_id, &query, limit.unwrap_or(20)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_quick_search_patients(state: State<DbState>, query: String, limit: Option<i64>) -> Result<Vec<Patient>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::quick_search_patients(&conn, &query, limit.unwrap_or(50)).map_err(|e| e.to_string())
+}
+
+// ============ Prescription Commands ============
+
+#[tauri::command]
+fn db_create_prescriptions(state: State<DbState>, prescriptions: Vec<Prescription>) -> Result<Vec<i64>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_prescriptions_batch(&conn, &prescriptions).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_get_prescriptions(state: State<DbState>, patient_id: i64) -> Result<Vec<Prescription>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::get_prescriptions_for_patient(&conn, patient_id).map_err(|e| e.to_string())
+}
+
+// ============ History CRUD Commands ============
+
+// Allergy commands
+#[tauri::command]
+fn db_create_allergy(state: State<DbState>, allergy: Allergy) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_allergy(&conn, &allergy).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_allergy(state: State<DbState>, allergy: Allergy) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_allergy(&conn, &allergy).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_delete_allergy(state: State<DbState>, id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_allergy(&conn, id).map_err(|e| e.to_string())
+}
+
+// Vaccination commands
+#[tauri::command]
+fn db_create_vaccination(state: State<DbState>, vaccination: Vaccination) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_vaccination(&conn, &vaccination).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_vaccination(state: State<DbState>, vaccination: Vaccination) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_vaccination(&conn, &vaccination).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_delete_vaccination(state: State<DbState>, id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_vaccination(&conn, id).map_err(|e| e.to_string())
+}
+
+// Social History commands
+#[tauri::command]
+fn db_create_social_history(state: State<DbState>, history: SocialHistory) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_social_history(&conn, &history).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_social_history(state: State<DbState>, history: SocialHistory) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_social_history(&conn, &history).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_delete_social_history(state: State<DbState>, id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_social_history(&conn, id).map_err(|e| e.to_string())
+}
+
+// Family History commands
+#[tauri::command]
+fn db_create_family_history(state: State<DbState>, history: FamilyHistory) -> Result<i64, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::create_family_history(&conn, &history).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_update_family_history(state: State<DbState>, history: FamilyHistory) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::update_family_history(&conn, &history).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn db_delete_family_history(state: State<DbState>, id: i64) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    db::delete_family_history(&conn, id).map_err(|e| e.to_string())
 }
