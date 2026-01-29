@@ -234,14 +234,21 @@
 					<div class="space-y-4">
 						<!-- Event Type Badge -->
 						{#if event.type}
-							<div>
-								<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white {EVENT_TYPE_CONFIG[event.type]?.color || 'bg-gray-500'}">
-									<i class="fa-solid {EVENT_TYPE_CONFIG[event.type]?.icon || 'fa-calendar'}"></i>
-									{EVENT_TYPE_CONFIG[event.type]?.label || event.type}
-								</span>
-								{#if event.status}
-									<span class="ml-2 text-sm {EVENT_STATUS_CONFIG[event.status]?.color || 'text-gray-600'}">
-										{EVENT_STATUS_CONFIG[event.status]?.label || event.status}
+							<div class="flex items-center justify-between">
+								<div>
+									<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium text-white {EVENT_TYPE_CONFIG[event.type]?.color || 'bg-gray-500'}">
+										<i class="fa-solid {EVENT_TYPE_CONFIG[event.type]?.icon || 'fa-calendar'}"></i>
+										{EVENT_TYPE_CONFIG[event.type]?.label || event.type}
+									</span>
+									{#if event.status}
+										<span class="ml-2 text-sm {EVENT_STATUS_CONFIG[event.status]?.color || 'text-gray-600'}">
+											{EVENT_STATUS_CONFIG[event.status]?.label || event.status}
+										</span>
+									{/if}
+								</div>
+								{#if event.durationMinutes}
+									<span class="text-sm text-gray-500 dark:text-gray-400">
+										{event.durationMinutes} min
 									</span>
 								{/if}
 							</div>
@@ -252,10 +259,39 @@
 							<h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100">
 								{event.patientName || event.title}
 							</h3>
+							{#if event.patientDob}
+								<p class="text-sm text-gray-500 dark:text-gray-400">
+									DOB: {event.patientDob}
+									{#if event.patientPhone}
+										<span class="ml-2">| {event.patientPhone}</span>
+									{/if}
+								</p>
+							{/if}
 							{#if event.patientName && event.title}
-								<p class="text-gray-600 dark:text-gray-400">{event.title}</p>
+								<p class="text-gray-600 dark:text-gray-400 mt-1">{event.title}</p>
 							{/if}
 						</div>
+
+						<!-- Chief Complaint -->
+						{#if event.chiefComplaint}
+							<div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+								<h4 class="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide mb-1">
+									Chief Complaint
+								</h4>
+								<p class="text-sm text-blue-900 dark:text-blue-100">{event.chiefComplaint}</p>
+							</div>
+						{/if}
+
+						<!-- AI Context Summary -->
+						{#if event.aiContextSummary}
+							<div class="p-3 bg-purple-50 dark:bg-purple-900/30 rounded-lg border border-purple-200 dark:border-purple-800">
+								<h4 class="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide mb-1 flex items-center gap-1">
+									<i class="fa-solid fa-wand-magic-sparkles"></i>
+									Patient Context
+								</h4>
+								<p class="text-sm text-purple-900 dark:text-purple-100">{event.aiContextSummary}</p>
+							</div>
+						{/if}
 
 						<!-- Date/Time -->
 						<div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
@@ -276,6 +312,14 @@
 							<div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
 								<i class="fa-solid fa-user-doctor w-5"></i>
 								<span>{event.provider}</span>
+							</div>
+						{/if}
+
+						<!-- Last Visit Info -->
+						{#if event.lastVisitDate}
+							<div class="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+								<i class="fa-solid fa-history w-5"></i>
+								<span>Last visit: {event.lastVisitDate}{event.lastVisitReason ? ` - ${event.lastVisitReason}` : ''}</span>
 							</div>
 						{/if}
 

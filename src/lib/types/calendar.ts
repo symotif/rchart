@@ -15,6 +15,14 @@ export interface CalendarEvent {
 	provider?: string;
 	status?: EventStatus;
 	color?: string;
+	// Additional appointment details
+	chiefComplaint?: string;
+	aiContextSummary?: string; // AI-generated context about patient's recent care
+	durationMinutes?: number;
+	patientDob?: string;
+	patientPhone?: string;
+	lastVisitDate?: string;
+	lastVisitReason?: string;
 }
 
 export type EventType =

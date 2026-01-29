@@ -5,6 +5,7 @@
 	import { addTab } from '../stores/TabStore';
 	import Calendar from '$lib/components/calendar/Calendar.svelte';
 	import EventModal from '$lib/components/calendar/EventModal.svelte';
+	import DashboardStats from '$lib/components/dashboard/DashboardStats.svelte';
 	import type { CalendarEvent } from '$lib/types/calendar';
 
 	// Panel sizes (persisted in state)
@@ -143,98 +144,291 @@
 				}
 			}
 
-			// Add some sample future appointments if none exist
-			if (events.length === 0) {
-				const today = new Date();
+			// Always add today's appointments with rich data (merge with any DB data)
+			const today = new Date();
+			const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+			// Check if we already have today's appointments
+			const hasTodayAppointments = events.some(e => {
+				const eventDate = new Date(e.date);
+				return eventDate.getFullYear() === today.getFullYear() &&
+					eventDate.getMonth() === today.getMonth() &&
+					eventDate.getDate() === today.getDate();
+			});
+
+			if (!hasTodayAppointments || events.length < 3) {
 				const sampleEvents: CalendarEvent[] = [
 					{
-						id: 1,
-						title: 'Follow-up visit',
+						id: 1001,
+						title: 'Follow-up: Depression Management',
 						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0).toISOString(),
-						type: 'encounter',
+						type: 'follow-up',
 						patientId: 1,
 						patientName: 'Logan Nguyen',
+						patientDob: '1998-09-15',
+						patientPhone: '(555) 123-4567',
 						status: 'scheduled',
-						location: 'Room 101'
+						location: 'Room 101',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 30,
+						chiefComplaint: 'Feeling more anxious lately, sleep issues returning',
+						aiContextSummary: 'Currently managing MDD with sertraline 100mg. PHQ-9 improved from 18 to 12 over 3 months. Last visit discussed adding therapy referral.',
+						lastVisitDate: '2025-01-15',
+						lastVisitReason: 'Depression follow-up'
 					},
 					{
-						id: 2,
-						title: 'Initial consultation',
-						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30).toISOString(),
-						type: 'consultation',
+						id: 1002,
+						title: 'Hypertension Check',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 30).toISOString(),
+						type: 'appointment',
 						patientId: 2,
 						patientName: 'Sarah Johnson',
+						patientDob: '1985-03-22',
+						patientPhone: '(555) 234-5678',
 						status: 'confirmed',
-						location: 'Room 102'
+						location: 'Room 102',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 20,
+						chiefComplaint: 'Blood pressure monitoring, occasional headaches',
+						aiContextSummary: 'On lisinopril 10mg for hypertension diagnosed 6 months ago. BP trending down nicely (last reading 132/84). Due for metabolic panel.',
+						lastVisitDate: '2025-01-08',
+						lastVisitReason: 'BP follow-up'
 					},
 					{
-						id: 3,
-						title: 'Medication review',
-						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0).toISOString(),
+						id: 1003,
+						title: 'Medication Review',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30).toISOString(),
 						type: 'follow-up',
 						patientId: 3,
 						patientName: 'Michael Chen',
+						patientDob: '1990-07-10',
+						patientPhone: '(555) 345-6789',
 						status: 'scheduled',
-						location: 'Room 103'
+						location: 'Room 103',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 30,
+						chiefComplaint: 'Review diabetes medications, A1c recheck',
+						aiContextSummary: 'Type 2 DM on metformin 1000mg BID. A1c was 7.8% three months ago, target <7%. Also managing mild anxiety with hydroxyzine PRN.',
+						lastVisitDate: '2024-12-20',
+						lastVisitReason: 'Diabetes management'
 					},
 					{
-						id: 4,
-						title: 'Telehealth session',
-						date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 11, 0).toISOString(),
-						type: 'telehealth',
+						id: 1004,
+						title: 'Post-Hospitalization Follow-up',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 0).toISOString(),
+						type: 'encounter',
 						patientId: 4,
 						patientName: 'Emily Davis',
-						status: 'confirmed'
+						patientDob: '1978-12-01',
+						patientPhone: '(555) 456-7890',
+						status: 'confirmed',
+						location: 'Room 101',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 45,
+						chiefComplaint: 'Follow-up after CHF exacerbation hospitalization',
+						aiContextSummary: 'Recently discharged (Jan 20) after CHF exacerbation. Started on new diuretic regimen. Needs weight monitoring and medication reconciliation.',
+						lastVisitDate: '2025-01-20',
+						lastVisitReason: 'Hospital discharge'
 					},
 					{
-						id: 5,
-						title: 'New patient intake',
-						date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 9, 30).toISOString(),
-						type: 'encounter',
+						id: 1005,
+						title: 'Anxiety Management',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0).toISOString(),
+						type: 'telehealth',
 						patientId: 5,
 						patientName: 'James Wilson',
+						patientDob: '2000-05-18',
+						patientPhone: '(555) 567-8901',
 						status: 'scheduled',
-						location: 'Room 101'
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 30,
+						chiefComplaint: 'GAD follow-up, considering SSRI',
+						aiContextSummary: 'Young adult with GAD, currently on buspirone 10mg TID with partial response. Discussed starting SSRI at last visit, patient was hesitant.',
+						lastVisitDate: '2025-01-10',
+						lastVisitReason: 'Anxiety follow-up'
+					},
+					{
+						id: 1006,
+						title: 'New Patient - Insomnia',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 0).toISOString(),
+						type: 'consultation',
+						patientId: 6,
+						patientName: 'Patricia Martinez',
+						patientDob: '1965-08-14',
+						patientPhone: '(555) 678-9012',
+						status: 'scheduled',
+						location: 'Room 102',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 45,
+						chiefComplaint: 'Chronic insomnia, tried OTC sleep aids without success',
+						aiContextSummary: 'New patient transfer. Records show chronic insomnia for 2+ years, history of depression (in remission). Previous trials of melatonin and diphenhydramine.',
+						lastVisitDate: undefined,
+						lastVisitReason: undefined
+					},
+					// Tomorrow's appointments
+					{
+						id: 1007,
+						title: 'Bipolar Disorder Follow-up',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 9, 0).toISOString(),
+						type: 'follow-up',
+						patientId: 7,
+						patientName: 'Robert Kim',
+						patientDob: '1982-04-25',
+						status: 'scheduled',
+						location: 'Room 101',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 30,
+						chiefComplaint: 'Mood stability check, lithium level review',
+						aiContextSummary: 'Bipolar I on lithium 900mg daily. Stable for 8 months. Due for lithium level and thyroid panel.'
+					},
+					{
+						id: 1008,
+						title: 'ADHD Medication Check',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1, 10, 30).toISOString(),
+						type: 'telehealth',
+						patientId: 8,
+						patientName: 'Amanda Foster',
+						patientDob: '1995-11-30',
+						status: 'confirmed',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 20,
+						chiefComplaint: 'ADHD medication refill, discuss dosage',
+						aiContextSummary: 'Adult ADHD on Adderall XR 20mg. Good response but reports afternoon crash. May need dose adjustment or booster.'
+					},
+					// Day after tomorrow
+					{
+						id: 1009,
+						title: 'Annual Wellness Visit',
+						date: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 2, 9, 30).toISOString(),
+						type: 'encounter',
+						patientId: 9,
+						patientName: 'Thomas Wright',
+						patientDob: '1958-06-12',
+						status: 'scheduled',
+						location: 'Room 103',
+						provider: 'Dr. Madeline Chu',
+						durationMinutes: 45,
+						chiefComplaint: 'Annual physical, preventive care',
+						aiContextSummary: 'Healthy 66-year-old male. Due for colonoscopy (last one 8 years ago). Needs flu vaccine and shingles vaccine discussion.'
 					}
 				];
-				events.push(...sampleEvents);
+
+				// Filter out any duplicates by checking patient IDs that might already exist
+				const existingPatientIds = new Set(events.map(e => e.patientId));
+				const newEvents = sampleEvents.filter(e => !existingPatientIds.has(e.patientId));
+				events.push(...newEvents);
 			}
 
 			calendarEvents = events;
 		} catch (e) {
 			console.error('Failed to load calendar data:', e);
-			// Use sample data as fallback
+			// Use sample data as fallback with rich appointment info
 			const today = new Date();
 			calendarEvents = [
 				{
-					id: 1,
-					title: 'Follow-up visit',
+					id: 1001,
+					title: 'Follow-up: Depression Management',
 					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 0).toISOString(),
-					type: 'encounter',
+					type: 'follow-up',
 					patientId: 1,
 					patientName: 'Logan Nguyen',
+					patientDob: '1998-09-15',
+					patientPhone: '(555) 123-4567',
 					status: 'scheduled',
-					location: 'Room 101'
+					location: 'Room 101',
+					provider: 'Dr. Madeline Chu',
+					durationMinutes: 30,
+					chiefComplaint: 'Feeling more anxious lately, sleep issues returning',
+					aiContextSummary: 'Currently managing MDD with sertraline 100mg. PHQ-9 improved from 18 to 12 over 3 months. Last visit discussed adding therapy referral.',
+					lastVisitDate: '2025-01-15',
+					lastVisitReason: 'Depression follow-up'
 				},
 				{
-					id: 2,
-					title: 'Initial consultation',
-					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30).toISOString(),
-					type: 'consultation',
+					id: 1002,
+					title: 'Hypertension Check',
+					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 9, 30).toISOString(),
+					type: 'appointment',
 					patientId: 2,
 					patientName: 'Sarah Johnson',
+					patientDob: '1985-03-22',
+					patientPhone: '(555) 234-5678',
 					status: 'confirmed',
-					location: 'Room 102'
+					location: 'Room 102',
+					provider: 'Dr. Madeline Chu',
+					durationMinutes: 20,
+					chiefComplaint: 'Blood pressure monitoring, occasional headaches',
+					aiContextSummary: 'On lisinopril 10mg for hypertension diagnosed 6 months ago. BP trending down nicely (last reading 132/84). Due for metabolic panel.',
+					lastVisitDate: '2025-01-08',
+					lastVisitReason: 'BP follow-up'
 				},
 				{
-					id: 3,
-					title: 'Medication review',
-					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0).toISOString(),
+					id: 1003,
+					title: 'Medication Review',
+					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 10, 30).toISOString(),
 					type: 'follow-up',
 					patientId: 3,
 					patientName: 'Michael Chen',
+					patientDob: '1990-07-10',
+					patientPhone: '(555) 345-6789',
 					status: 'scheduled',
-					location: 'Room 103'
+					location: 'Room 103',
+					provider: 'Dr. Madeline Chu',
+					durationMinutes: 30,
+					chiefComplaint: 'Review diabetes medications, A1c recheck',
+					aiContextSummary: 'Type 2 DM on metformin 1000mg BID. A1c was 7.8% three months ago, target <7%. Also managing mild anxiety with hydroxyzine PRN.',
+					lastVisitDate: '2024-12-20',
+					lastVisitReason: 'Diabetes management'
+				},
+				{
+					id: 1004,
+					title: 'Post-Hospitalization Follow-up',
+					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 11, 0).toISOString(),
+					type: 'encounter',
+					patientId: 4,
+					patientName: 'Emily Davis',
+					patientDob: '1978-12-01',
+					patientPhone: '(555) 456-7890',
+					status: 'confirmed',
+					location: 'Room 101',
+					provider: 'Dr. Madeline Chu',
+					durationMinutes: 45,
+					chiefComplaint: 'Follow-up after CHF exacerbation hospitalization',
+					aiContextSummary: 'Recently discharged (Jan 20) after CHF exacerbation. Started on new diuretic regimen. Needs weight monitoring and medication reconciliation.',
+					lastVisitDate: '2025-01-20',
+					lastVisitReason: 'Hospital discharge'
+				},
+				{
+					id: 1005,
+					title: 'Anxiety Management',
+					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 14, 0).toISOString(),
+					type: 'telehealth',
+					patientId: 5,
+					patientName: 'James Wilson',
+					patientDob: '2000-05-18',
+					patientPhone: '(555) 567-8901',
+					status: 'scheduled',
+					provider: 'Dr. Madeline Chu',
+					durationMinutes: 30,
+					chiefComplaint: 'GAD follow-up, considering SSRI',
+					aiContextSummary: 'Young adult with GAD, currently on buspirone 10mg TID with partial response. Discussed starting SSRI at last visit, patient was hesitant.',
+					lastVisitDate: '2025-01-10',
+					lastVisitReason: 'Anxiety follow-up'
+				},
+				{
+					id: 1006,
+					title: 'New Patient - Insomnia',
+					date: new Date(today.getFullYear(), today.getMonth(), today.getDate(), 15, 0).toISOString(),
+					type: 'consultation',
+					patientId: 6,
+					patientName: 'Patricia Martinez',
+					patientDob: '1965-08-14',
+					patientPhone: '(555) 678-9012',
+					status: 'scheduled',
+					location: 'Room 102',
+					provider: 'Dr. Madeline Chu',
+					durationMinutes: 45,
+					chiefComplaint: 'Chronic insomnia, tried OTC sleep aids without success',
+					aiContextSummary: 'New patient transfer. Records show chronic insomnia for 2+ years, history of depression (in remission). Previous trials of melatonin and diphenhydramine.'
 				}
 			];
 		}
@@ -398,7 +592,10 @@
 				</div>
 			{:else}
 				{#each dayAppointments as appointment}
-					<div class="appointment-card bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 hover:shadow-md transition-shadow">
+					<button
+						onclick={() => handleEventClick(appointment)}
+						class="appointment-card w-full text-left bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-200 dark:border-gray-600 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all"
+					>
 						<div class="flex items-start gap-3">
 							<!-- Time -->
 							<div class="flex-shrink-0 text-center">
@@ -423,32 +620,23 @@
 										</p>
 									</div>
 								</div>
-								{#if appointment.location}
+								{#if appointment.chiefComplaint}
+									<p class="text-xs text-blue-600 dark:text-blue-400 mt-1 truncate">
+										<i class="fa-solid fa-comment-medical mr-1"></i>{appointment.chiefComplaint}
+									</p>
+								{:else if appointment.location}
 									<p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
 										<i class="fa-solid fa-location-dot mr-1"></i>{appointment.location}
 									</p>
 								{/if}
 							</div>
 
-							<!-- Actions -->
-							<div class="flex flex-col gap-1 flex-shrink-0">
-								<button
-									onclick={() => handleViewPatient(appointment)}
-									class="px-2 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-									title="View patient"
-								>
-									<i class="fa-solid fa-user"></i>
-								</button>
-								<button
-									onclick={() => handleStartEncounter(appointment)}
-									class="px-2 py-1 text-xs font-medium text-white bg-green-500 hover:bg-green-600 rounded transition-colors"
-									title="Start encounter"
-								>
-									<i class="fa-solid fa-play"></i>
-								</button>
+							<!-- Chevron indicator -->
+							<div class="flex-shrink-0 self-center">
+								<i class="fa-solid fa-chevron-right text-gray-400 text-sm"></i>
 							</div>
 						</div>
-					</div>
+					</button>
 				{/each}
 			{/if}
 		</div>
@@ -487,65 +675,14 @@
 			tabindex="0"
 		></div>
 
-		<!-- Stats -->
-		<div class="panel bg-white dark:bg-gray-800 rounded-lg shadow-lg flex-1 overflow-auto min-h-0 p-4">
-			<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">Dashboard</h2>
-
-			<div class="grid grid-cols-2 gap-4">
-				<div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4">
-					<div class="flex items-center gap-3">
-						<div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
-							<i class="fa-solid fa-calendar-check"></i>
-						</div>
-						<div>
-							<p class="text-2xl font-bold text-gray-800 dark:text-gray-100">{dayAppointments.length}</p>
-							<p class="text-sm text-gray-500 dark:text-gray-400">Today's Appointments</p>
-						</div>
-					</div>
-				</div>
-
-				<div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-4">
-					<div class="flex items-center gap-3">
-						<div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white">
-							<i class="fa-solid fa-user-check"></i>
-						</div>
-						<div>
-							<p class="text-2xl font-bold text-gray-800 dark:text-gray-100">
-								{dayAppointments.filter(a => a.status === 'completed').length}
-							</p>
-							<p class="text-sm text-gray-500 dark:text-gray-400">Completed</p>
-						</div>
-					</div>
-				</div>
-
-				<div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4">
-					<div class="flex items-center gap-3">
-						<div class="w-10 h-10 rounded-full bg-purple-500 flex items-center justify-center text-white">
-							<i class="fa-solid fa-clock"></i>
-						</div>
-						<div>
-							<p class="text-2xl font-bold text-gray-800 dark:text-gray-100">
-								{calendarEvents.length}
-							</p>
-							<p class="text-sm text-gray-500 dark:text-gray-400">Total Events</p>
-						</div>
-					</div>
-				</div>
-
-				<div class="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-4">
-					<div class="flex items-center gap-3">
-						<div class="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white">
-							<i class="fa-solid fa-video"></i>
-						</div>
-						<div>
-							<p class="text-2xl font-bold text-gray-800 dark:text-gray-100">
-								{calendarEvents.filter(e => e.type === 'telehealth').length}
-							</p>
-							<p class="text-sm text-gray-500 dark:text-gray-400">Telehealth</p>
-						</div>
-					</div>
-				</div>
-			</div>
+		<!-- Dashboard Stats -->
+		<div class="panel bg-white dark:bg-gray-800 rounded-lg shadow-lg flex-1 overflow-auto min-h-0">
+			<DashboardStats
+				todayAppointments={dayAppointments.length}
+				completedAppointments={dayAppointments.filter(a => a.status === 'completed').length}
+				totalEvents={calendarEvents.length}
+				telehealthCount={calendarEvents.filter(e => e.type === 'telehealth').length}
+			/>
 		</div>
 	</div>
 
