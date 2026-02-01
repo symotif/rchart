@@ -680,7 +680,6 @@
 			<DashboardStats
 				todayAppointments={dayAppointments.length}
 				completedAppointments={dayAppointments.filter(a => a.status === 'completed').length}
-				totalEvents={calendarEvents.length}
 				telehealthCount={calendarEvents.filter(e => e.type === 'telehealth').length}
 			/>
 		</div>
