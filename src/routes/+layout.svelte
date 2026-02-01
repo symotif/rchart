@@ -1,195 +1,159 @@
-<script lang="typescript">
+<script lang="ts">
 	import '../app.css';
-	import { invoke } from '@tauri-apps/api/tauri';
+	import type { Snippet } from 'svelte';
+	import { onMount } from 'svelte';
 
-	function add_person(): String {
-		invoke('add_ryan');
-		console.log('in');
-		return "hey";
-	}
-	//const invoke = window.__TAURI__.invoke;
+	// components
+	import TabList from '../lib/components/TabList.svelte';
+	import MessageCenter from '../lib/components/MessageCenter.svelte';
+	import SidebarTab from '../lib/components/SidebarTab.svelte';
+	import ProfileButton from '$lib/components/ProfileButton.svelte';
+	import StatusBar from '$lib/components/StatusBar.svelte';
+	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import ToastContainer from '$lib/components/ToastContainer.svelte';
+
+	// stores
+	import { SideBarStore, setTab } from '../stores/SideBarStore';
+	import { ThemeStore } from '../stores/ThemeStore';
+	import { TabStore } from '../stores/TabStore';
+	import { SearchStore } from '../stores/SearchStore';
+
+	// App version
+	const appVersion = '0.0.1';
+
+	// Check if there are no tabs
+	let hasTabs = $derived($TabStore.length > 0);
+
+	// Apply theme class on mount and when theme changes
+	onMount(() => {
+		const unsubscribe = ThemeStore.subscribe((theme) => {
+			if (theme === 'dark') {
+				document.documentElement.classList.add('dark');
+			} else {
+				document.documentElement.classList.remove('dark');
+			}
+		});
+		return unsubscribe;
+	});
+
+	let { children }: { children: Snippet } = $props();
+
+	const sideBarTabInfo = [
+		{ label: 'Dashboard', icon: 'fa-calendar-days', path: '/' },
+		{ label: 'Patient List', icon: 'fa-list', path: '/list' },
+		{ label: 'Team', icon: 'fa-people-group', path: '/team' },
+		{ label: 'Resources', icon: 'fa-book-medical', path: '/resources' },
+		{ label: 'Extensions', icon: 'fa-puzzle-piece', path: '/extensions' }
+	];
 </script>
 
-<body class="overscroll-none">
+<div class="overscroll-none bg-gray-300 dark:bg-gray-900 app-container">
 	<!-- top bar -->
-	<section class="flex flex-row absolute top-0 left-20 h-20 w-full py-5 px-5 bg-gray-50">
+	<section class="flex flex-col absolute top-0 left-20 h-30 w-full pt-3 px-5 bg-white dark:bg-gray-800 z-40">
+		<!-- the top part of the bar -->
+		<div class="flex flex-row">
+			<!-- search box (opens command palette) -->
+			<button
+				onclick={() => SearchStore.open('global')}
+				class="w-full max-w-md"
+			>
+				<div class="relative flex items-center text-gray-400 focus-within:text-gray-500 dark:text-gray-300 dark:focus-within:text-gray-200">
+					<i class="fa-solid fa-magnifying-glass w-5 h-5 absolute ml-3 pointer-events-none"></i>
+					<div
+						class="w-full pr-3 pl-10 py-2 font-semibold bg-gray-100 dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-500 dark:text-gray-400
+								rounded-2xl border-none ring-2 ring-gray-300 dark:ring-gray-600 hover:ring-gray-400 dark:hover:ring-gray-500
+								text-left cursor-pointer transition-all flex items-center justify-between"
+					>
+						<span>Search...</span>
+						<kbd class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded text-gray-500 dark:text-gray-400">
+							<span class="text-base">⌘</span>K
+						</kbd>
+					</div>
+				</div>
+			</button>
 
-		<!-- search box -->
-		<form class="w-full max-w-md">
-			<div class="relative flex items-center text-gray-400 focus-within:text-gray-600">
-				<i class="fa-solid fa-magnifying-glass w-5 h-5 absolute ml-3 pointer-events-none" />
-				<input
-					type="text"
-					name="search"
-					placeholder="Search"
-					autocomplete="off"
-					class="w-full pr-3 pl-10 py-2 font-semibold placeholder-gray-500 text-bloack
-							rounded-2xl border-none ring-2 ring-gray-300 focus:ring-gray-500
-							focus:ring-2"/>
+			<!-- three top buttons -->
+			<div
+				class="fixed right-0 mr-10 bg-gray-300 dark:bg-gray-700 px-3 pt-3 pb-2 rounded-xl flex flex-row gap-3"
+			>
+				<!-- notifications -->
+				<button
+					onclick={() => {
+						setTab(-1);
+					}}><i class="fa-solid fa-bell h-6 w-6 text-gray-500 dark:text-gray-300"></i></button
+				>
+
+				<!-- statistics -->
+				<button
+					onclick={() => {
+						setTab(-1);
+					}}
+					><a href="/stats"
+						><i class="fa-solid fa-chart-simple h-6 w-6 text-gray-500 dark:text-gray-300"></i></a
+					></button
+				>
+
+				<!-- settings -->
+				<button
+					onclick={() => {
+						setTab(-1);
+					}}
+					><a href="/options"><i class="fa-solid fa-gear h-6 w-6 text-gray-500 dark:text-gray-300"></i></a
+					></button
+				>
 			</div>
-		</form>
-
-		<!-- three top buttons -->
-		<div class="fixed right-0 mr-10 pt-2">
-			<button on:click="{add_person}"><i class="fa-solid fa-bell h-6 w-6 text-gray-600" /></button>
-			<button><i class="fa-solid fa-chart-simple h-6 w-6 text-gray-600" /></button>
-			<button><i class="fa-solid fa-gear h-6 w-6 text-gray-600" /></button>
 		</div>
 
+		<!-- the bottom part of the bar is just tabs -->
+		<TabList />
 	</section>
 
 	<!-- side bar -->
-	<section class="fixed top-0 left-0 h-screen w-20 m-0 flex flex-col bg-gray-50 text-white shadow-lg">
-		
+	<section class="fixed top-0 left-0 h-screen w-20 m-0 p-0 flex flex-col gap-0 bg-white dark:bg-gray-800 z-50">
 		<!-- profile button-->
-		<div class="group">
-			<div class="relative flex items-center justify-center mt-3">
-				<img
-					class="w-16 h-16 rounded-full border-2 border-blue-400"
-					src="./src/lib/img/doctor_headshot.jpg"
-					alt="profile-pic"
-				/>
-				<div>
-					<img
-						class="w-8 h-8 rounded-full justify-center absolute bottom-0 right-0"
-						src="./src/lib/img/wsu.png"
-						alt="institution"
-					/>
-					<span class="w-4 h-4 rounded-full bg-green-500 absolute bottom-0 left-2" />
-				</div>
-			</div>
+		<ProfileButton />
 
-			<!-- tooltip -->
-			<span class="absolute w-auto p-2 m-2 min-2-max left-20 rounded-md
-					shadow-md text-white bg-gray-600 text-xs font-bold
-					transition-all duration-100 scale-0 origin-left group-hover:scale-100">
-				profile
-			</span>
-		</div>
-
-		<!-- side buttons -->
-		<div class="group">
-			<a href="/">
-				<i
-					class="relative flex items-center justify-center h-16 w-16 mt-2 mb-2
-					mx-auto shadow-lg bg-gray-200 text-gray-600 hover:bg-gray-700
-					hover:text-white rounded-3xl hover:rounded-xl transition-all
-					duration-300 ease-liner"
-				>
-					<i class="fa-solid fa-calendar-days h-8 w-8" />
-				</i>
-			</a>
-			<span
-				class="absolute w-auto p-2 m-2 min-2-max left-20 rounded-md
-						shadow-md text-white bg-gray-900 text-xs font-bold
-						transition-all duration-100 scale-0 origin-left group-hover:scale-100"
+		<!-- sidebar tabs -->
+		{#each sideBarTabInfo as { label, icon, path }, index}
+			<button
+				onclick={() => {
+					setTab(index);
+				}}
 			>
-				dashboard
-			</span>
-		</div>
-
-		<div class="group">
-			<a href="/list">
-				<i
-					class="relative flex items-center justify-center h-16 w-16 mt-2 mb-2
-					mx-auto shadow-lg bg-gray-200 text-gray-600 hover:bg-gray-700
-					hover:text-white rounded-3xl hover:rounded-xl transition-all
-					duration-300 ease-liner"
-				>
-					<i class="fa-solid fa-list h-8 w-8" />
-				</i>
-			</a>
-			<span
-				class="absolute w-auto p-2 m-2 min-2-max left-20 rounded-md
-						shadow-md text-white bg-gray-900 text-xs font-bold
-						transition-all duration-100 scale-0 origin-left group-hover:scale-100"
-			>
-				Patient List
-			</span>
-		</div>
-
-		<div class="group">
-			<a href="/team">
-				<i class="relative flex items-center justify-center h-16 w-16 mt-2 mb-2
-						mx-auto shadow-lg bg-gray-200 text-gray-600 hover:bg-gray-700
-						hover:text-white rounded-3xl hover:rounded-xl transition-all
-						duration-300 ease-liner">
-					<i class="fa-solid fa-people-group h-8 w-8" />
-				</i>
-			</a>
-			<span
-				class="absolute w-auto p-2 m-2 min-2-max left-20 rounded-md
-						shadow-md text-white bg-gray-900 text-xs font-bold
-						transition-all duration-100 scale-0 origin-left group-hover:scale-100"
-			>
-				Team
-			</span>
-		</div>
-
-		<div class="group">
-			<a href="/resources">
-				<i
-					class="relative flex items-center justify-center h-16 w-16 mt-2 mb-2
-					mx-auto shadow-lg bg-gray-200 text-gray-600 hover:bg-gray-700
-					hover:text-white rounded-3xl hover:rounded-xl transition-all
-					duration-300 ease-liner"
-				>
-					<i class="fa-solid fa-book-medical h-8 w-8" />
-				</i>
-			</a>
-			<span
-				class="absolute w-auto p-2 m-2 min-2-max left-20 rounded-md
-						shadow-md text-white bg-gray-900 text-xs font-bold
-						transition-all duration-100 scale-0 origin-left group-hover:scale-100"
-			>
-				Resources
-			</span>
-		</div>
-
-		<div class="group">
-			<a href="/extensions">
-				<i
-					class="relative flex items-center justify-center h-16 w-16 mt-2 mb-2
-					mx-auto shadow-lg bg-gray-200 text-gray-600 hover:bg-gray-700
-					hover:text-white rounded-3xl hover:rounded-xl transition-all
-					duration-300 ease-liner"
-				>
-					<i class="fa-solid fa-puzzle-piece h-8 w-8 pl-1 pb-1" />
-				</i>
-			</a>
-			<span
-				class="absolute w-auto p-2 m-2 min-2-max left-20 rounded-md
-						shadow-md text-white bg-gray-900 text-xs font-bold
-						transition-all duration-100 scale-0 origin-left group-hover:scale-100"
-			>
-				Extensions
-			</span>
-		</div>
-		
+				<SidebarTab {label} {icon} {path} isActive={index == $SideBarStore} />
+			</button>
+		{/each}
 	</section>
 
 	<!-- page contents -->
 	<main>
-		<slot />
+		{#if hasTabs}
+			{@render children()}
+		{:else}
+			<!-- No tabs - show version screen -->
+			<div class="absolute inset-0 left-20 top-20 flex items-center justify-center">
+				<p class="text-gray-400 dark:text-gray-500 text-lg font-light">rchart version {appVersion}</p>
+			</div>
+		{/if}
 	</main>
 
 	<!-- message center -->
-	<div class="absolute right-0 top-20 h-screen my-5 w-10 bg-gray-50 rounded-lg">
-		<div class="flex">
-			<p class=" bg-red-500 text-left text-lg font-bold -rotate-90">Message Center</p>
-		</div>
-	</div>
+	<MessageCenter />
 
 	<!-- status bar -->
-	<footer>
-		<section class="absolute bottom-0 left-0 h-6 w-screen bg-blue-600"></section>
-	</footer>
-</body>
+	<StatusBar />
+
+	<!-- command palette (global search) -->
+	<CommandPalette />
+
+	<!-- toast notifications -->
+	<ToastContainer />
+</div>
 
 <style>
-	body {
+	.app-container {
 		margin: 0;
-		height: 100%;
+		height: 100vh;
 		width: 100%;
 		overflow: hidden;
 	}
@@ -203,13 +167,5 @@
 		max-width: 1024px;
 		margin: 0 auto;
 		box-sizing: border-box;
-	}
-
-	footer {
-		display: flex;
-		flex-direction: column;
-		justify-content: center;
-		align-items: center;
-		padding: 40px;
 	}
 </style>

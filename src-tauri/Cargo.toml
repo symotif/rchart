@@ -16,19 +16,9 @@ tauri-build = { version = "1.0.0-beta.4", features = [] }
 
 [dependencies]
 serde_json = "1.0"
-serde = { version = "1.0", features = [ "derive" ] }
+serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "1.0.0-beta.8", features = ["api-all"] }
-#sqlite = { version = "0.26.0" } 
-# sqlx = { version = "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"] }
-# tokio = { version = "1.21.2", feature = [ "full" ] }
-#sea-orm = { version = "^0", features = [ "sqlx-sqlite", "runtime-tokio-native-tls", "macros"] }
-#sea-orm-cli = "0.9.3"
-#tauri-plugin-sql = { path = "../../..", features = ["sqlite"] }
-
-#git = "https://github.com/tauri-apps/tauri-plugin-sql"
-#tag = "v0.1.0"
-#features = ["sqlite"] # or "postgres", or "mysql"
-#branch = "main"
+rusqlite = { version = "0.31", features = ["bundled-sqlcipher"] }
 
 [features]
 # by default Tauri runs in production mode

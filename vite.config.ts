@@ -1,14 +1,15 @@
 import { sveltekit } from '@sveltejs/kit/vite';
-import type { UserConfig } from 'vite';
+import { defineConfig } from 'vite';
 import fs from 'fs';
 
-const viteTauriSetup = fs.readFileSync('./vite-tauri-setup.json');
-const tauriConfig = JSON.parse(viteTauriSetup as any);
-const port = tauriConfig.build.devPath.split(':').pop();
+const viteTauriSetup = fs.readFileSync('./vite-tauri-setup.json', 'utf-8');
+const tauriConfig = JSON.parse(viteTauriSetup);
+const port = parseInt(tauriConfig.build.devPath.split(':').pop() || '5173');
 
-const config: UserConfig = {
+export default defineConfig({
 	plugins: [sveltekit()],
-	server: { port, strictPort: true }
-};
-
-export default config;
+	server: {
+		port,
+		strictPort: true
+	}
+});
