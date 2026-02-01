@@ -27,7 +27,6 @@
     <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg?style=flat-square" alt="Contributor Covenant" />
   </a>
   <img src="https://img.shields.io/github/stars/your-username/rchart?style=flat-square&color=yellow" alt="Stars" />
-    [![Build and Release](https://github.com/symotif/rchart/actions/workflows/release.yml/badge.svg)](https://github.com/symotif/rchart/actions/workflows/release.yml)
 </div>
 
 ## 🌟 Vision
