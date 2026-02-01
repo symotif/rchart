@@ -72,6 +72,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          tauriScript: yarn tauri
           tagName: rchart-v__VERSION__
           releaseName: "rchart v__VERSION__"
           releaseBody: |
