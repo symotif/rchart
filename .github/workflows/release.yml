@@ -54,8 +54,10 @@ jobs:
       - name: Install Windows OpenSSL
         if: matrix.platform == 'windows-latest'
         run: |
-          choco install openssl -y
-          echo "OPENSSL_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+          vcpkg integrate install
+          vcpkg install openssl:x64-windows-static-md
+          echo "OPENSSL_DIR=C:\vcpkg\installed\x64-windows-static-md" >> $env:GITHUB_ENV
+          echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
 
       - name: Install frontend dependencies
         run: yarn install
