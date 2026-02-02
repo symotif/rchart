@@ -11,18 +11,23 @@
 	import StatusBar from '$lib/components/StatusBar.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import ToastContainer from '$lib/components/ToastContainer.svelte';
+	import StartupLoader from '$lib/components/StartupLoader.svelte';
 
 	// stores
 	import { SideBarStore, setTab } from '../stores/SideBarStore';
 	import { ThemeStore } from '../stores/ThemeStore';
 	import { TabStore } from '../stores/TabStore';
 	import { SearchStore } from '../stores/SearchStore';
+	import { AppDataStore } from '../stores/AppDataStore';
 
 	// App version
 	const appVersion = '0.0.1';
 
 	// Check if there are no tabs
 	let hasTabs = $derived($TabStore.length > 0);
+
+	// Check if app data is loaded
+	let appDataLoaded = $derived($AppDataStore.isLoaded);
 
 	// Apply theme class on mount and when theme changes
 	onMount(() => {
@@ -148,6 +153,9 @@
 
 	<!-- toast notifications -->
 	<ToastContainer />
+
+	<!-- startup loader overlay -->
+	<StartupLoader />
 </div>
 
 <style>

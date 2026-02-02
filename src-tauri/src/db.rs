@@ -92,10 +92,12 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             patient_id INTEGER NOT NULL,
             name TEXT NOT NULL,
+            description TEXT,
             icd_code TEXT,
             onset_date TEXT,
             status TEXT DEFAULT 'active',
             category TEXT,
+            notes TEXT,
             created_at TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
         );
@@ -106,11 +108,14 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             patient_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             dose TEXT,
+            dosage TEXT,
             frequency TEXT,
             route TEXT,
+            prescriber TEXT,
             start_date TEXT,
             end_date TEXT,
             status TEXT DEFAULT 'active',
+            notes TEXT,
             created_at TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
         );
@@ -144,11 +149,14 @@ pub fn init_db(db_path: &PathBuf, _encryption_key: &str) -> Result<Connection> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             patient_id INTEGER NOT NULL,
             name TEXT NOT NULL,
+            test_name TEXT,
             value REAL NOT NULL,
+            result TEXT,
             unit TEXT,
             reference_range_low REAL,
             reference_range_high REAL,
             is_abnormal INTEGER DEFAULT 0,
+            notes TEXT,
             recorded_at TEXT NOT NULL,
             created_at TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE
@@ -2823,6 +2831,7 @@ pub struct PatientList {
     pub sort_order: i64,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PatientListMember {
     pub id: Option<i64>,

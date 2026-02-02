@@ -94,6 +94,22 @@ button {
 	font-family: inherit;
 }
 
+/* Fix select/option dark mode styling */
+select {
+	font-size: inherit;
+	font-family: inherit;
+}
+
+.dark select,
+.dark select option {
+	background-color: #2f3136;
+	color: #f3f4f6;
+}
+
+.dark select option:checked {
+	background-color: #4f46e5;
+}
+
 button:focus:not(:focus-visible) {
 	outline: none;
 }

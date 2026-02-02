@@ -80,13 +80,60 @@
 		{ id: 'c3', name: 'Dr. Robert Kim', initials: 'RK', specialty: 'Oncology', avatarColor: 'bg-green-500', isOnline: true },
 	]);
 
-	// Sample messages for selected chat
-	let messages = $state<Message[]>([
-		{ id: 'm1', senderId: 's1', senderName: 'Dr. Sarah Chen', content: 'Hi, the labs are back for room 204', timestamp: '10:30 AM', isOwn: false },
-		{ id: 'm2', senderId: 'me', senderName: 'You', content: 'Thanks! What are the results?', timestamp: '10:32 AM', isOwn: true },
-		{ id: 'm3', senderId: 's1', senderName: 'Dr. Sarah Chen', content: 'BMP looks good, but potassium is slightly elevated at 5.2', timestamp: '10:33 AM', isOwn: false },
-		{ id: 'm4', senderId: 'me', senderName: 'You', content: 'Got it. I\'ll adjust the medications accordingly.', timestamp: '10:35 AM', isOwn: true },
-	]);
+	// Message history for each chat (keyed by chat id)
+	let chatMessages = $state<Map<string, Message[]>>(new Map([
+		['s1', [
+			{ id: 'm1', senderId: 's1', senderName: 'Dr. Sarah Chen', content: 'Hi, the labs are back for room 204', timestamp: '10:30 AM', isOwn: false },
+			{ id: 'm2', senderId: 'me', senderName: 'You', content: 'Thanks! What are the results?', timestamp: '10:32 AM', isOwn: true },
+			{ id: 'm3', senderId: 's1', senderName: 'Dr. Sarah Chen', content: 'BMP looks good, but potassium is slightly elevated at 5.2', timestamp: '10:33 AM', isOwn: false },
+			{ id: 'm4', senderId: 'me', senderName: 'You', content: 'Got it. I\'ll adjust the medications accordingly.', timestamp: '10:35 AM', isOwn: true },
+		]],
+		['s2', [
+			{ id: 'm1', senderId: 's2', senderName: 'Dr. Michael Ross', content: 'Hey, are you available this afternoon?', timestamp: '9:15 AM', isOwn: false },
+			{ id: 'm2', senderId: 'me', senderName: 'You', content: 'Should be, what do you need?', timestamp: '9:20 AM', isOwn: true },
+			{ id: 'm3', senderId: 's2', senderName: 'Dr. Michael Ross', content: 'Can you cover my 3pm? I have a family emergency.', timestamp: '9:22 AM', isOwn: false },
+		]],
+		['s3', [
+			{ id: 'm1', senderId: 's3', senderName: 'Nurse Amy', content: 'Dr., patient in 312 is complaining of chest pain', timestamp: '11:00 AM', isOwn: false },
+			{ id: 'm2', senderId: 's3', senderName: 'Nurse Bob', content: 'Vitals are stable but he seems anxious', timestamp: '11:02 AM', isOwn: false },
+			{ id: 'm3', senderId: 'me', senderName: 'You', content: 'On my way. Get an EKG ready.', timestamp: '11:03 AM', isOwn: true },
+			{ id: 'm4', senderId: 's3', senderName: 'Nurse Amy', content: 'EKG is ready', timestamp: '11:05 AM', isOwn: false },
+			{ id: 'm5', senderId: 's3', senderName: 'Nurse Bob', content: 'Patient in 312 needs attention', timestamp: '11:30 AM', isOwn: false },
+		]],
+		['s4', [
+			{ id: 'm1', senderId: 'me', senderName: 'You', content: 'Hi Emily, could you take a look at the MRI for patient Martinez?', timestamp: '8:00 AM', isOwn: true },
+			{ id: 'm2', senderId: 's4', senderName: 'Dr. Emily Watson', content: 'Sure, sending it over now.', timestamp: '8:15 AM', isOwn: false },
+			{ id: 'm3', senderId: 's4', senderName: 'Dr. Emily Watson', content: 'Looks like mild disc herniation at L4-L5. Nothing surgical.', timestamp: '8:45 AM', isOwn: false },
+			{ id: 'm4', senderId: 'me', senderName: 'You', content: 'Thanks for the consult!', timestamp: '8:50 AM', isOwn: true },
+			{ id: 'm5', senderId: 's4', senderName: 'Dr. Emily Watson', content: 'Thanks for the consult!', timestamp: '9:00 AM', isOwn: false },
+		]],
+		['s5', [
+			{ id: 'm1', senderId: 's5', senderName: 'Dr. Heart', content: 'Team, we have a new referral for echo', timestamp: '2:00 PM', isOwn: false },
+			{ id: 'm2', senderId: 's5', senderName: 'Dr. Pulse', content: 'I can take it tomorrow morning', timestamp: '2:05 PM', isOwn: false },
+			{ id: 'm3', senderId: 'me', senderName: 'You', content: 'Thanks, patient is Thompson in room 215', timestamp: '2:10 PM', isOwn: true },
+			{ id: 'm4', senderId: 's5', senderName: 'Dr. Heart', content: 'Echo scheduled for tomorrow', timestamp: '2:15 PM', isOwn: false },
+		]],
+		['p1', [
+			{ id: 'm1', senderId: 'p1', senderName: 'Logan Smith', content: 'Hi Doctor, I picked up my new prescription today.', timestamp: '1:00 PM', isOwn: false },
+			{ id: 'm2', senderId: 'me', senderName: 'You', content: 'Great! Take it once daily with food, preferably in the morning.', timestamp: '1:15 PM', isOwn: true },
+			{ id: 'm3', senderId: 'p1', senderName: 'Logan Smith', content: 'When should I take my new medication?', timestamp: '1:30 PM', isOwn: false },
+		]],
+		['p2', [
+			{ id: 'm1', senderId: 'me', senderName: 'You', content: 'Your test results came back normal. Everything looks good!', timestamp: '10:00 AM', isOwn: true },
+			{ id: 'm2', senderId: 'p2', senderName: 'John Doe', content: 'That\'s such a relief!', timestamp: '10:30 AM', isOwn: false },
+			{ id: 'm3', senderId: 'p2', senderName: 'John Doe', content: 'Thank you doctor!', timestamp: '10:31 AM', isOwn: false },
+		]],
+		['p3', [
+			{ id: 'm1', senderId: 'p3', senderName: 'Max Johnson', content: 'Doctor, I got my lab results in the mail.', timestamp: '3:00 PM', isOwn: false },
+			{ id: 'm2', senderId: 'p3', senderName: 'Max Johnson', content: 'Some of the numbers look different from last time.', timestamp: '3:02 PM', isOwn: false },
+			{ id: 'm3', senderId: 'p3', senderName: 'Max Johnson', content: 'I have a question about my results', timestamp: '3:05 PM', isOwn: false },
+		]],
+	]));
+
+	// Get messages for currently selected chat
+	let currentMessages = $derived(
+		selectedChatId ? (chatMessages.get(selectedChatId) || []) : []
+	);
 
 	const toggleDrawer = () => {
 		isOpen = !isOpen;
@@ -120,7 +167,9 @@
 			isOwn: true
 		};
 
-		messages = [...messages, newMessage];
+		const existingMessages = chatMessages.get(selectedChatId) || [];
+		chatMessages.set(selectedChatId, [...existingMessages, newMessage]);
+		chatMessages = new Map(chatMessages); // trigger reactivity
 		messageInput = '';
 	}
 
@@ -215,12 +264,12 @@
 <!-- Drawer -->
 <div
 	class="fixed top-20 h-[calc(100%-6rem)] bg-gray-100 dark:bg-gray-800 shadow-xl rounded-l-lg transition-all duration-300 ease-in-out flex flex-row z-50"
-	style="width: 800px; right: {isOpen ? '0px' : '-750px'};"
+	style="width: {isOpen ? '800px' : '12px'}; right: 0;"
 >
-	<!-- Pull Tab - positioned outside the drawer, aligned with edge when closed -->
-	<div class="absolute -left-12 top-1/2 -translate-y-1/2 z-50">
+	<!-- Pull Tab - positioned in the middle of the left edge, peeking out -->
+	<div class="absolute -left-[97px] top-1/2 -translate-y-1/2 z-50">
 		<button
-			class="-rotate-90 px-5 py-2.5 bg-blue-500 dark:bg-blue-600 text-white rounded-t-lg cursor-pointer whitespace-nowrap shadow-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
+			class="-rotate-90 px-4 py-2 bg-blue-500 dark:bg-blue-600 text-white rounded-t-lg cursor-pointer whitespace-nowrap shadow-lg hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors flex items-center gap-2"
 			onclick={toggleDrawer}
 		>
 			<i class="fa-solid fa-comments"></i>
@@ -233,14 +282,17 @@
 		</button>
 	</div>
 
-	<!-- Drawer Handle Bar -->
-	<button
-		class="w-3 flex-shrink-0 bg-gray-200 dark:bg-gray-700 cursor-pointer hover:bg-blue-300 dark:hover:bg-blue-600 transition-colors border-0"
-		onclick={toggleDrawer}
-		aria-label="Toggle message center"
-	></button>
+	<!-- Drawer Handle Bar (visible when closed) -->
+	{#if !isOpen}
+		<button
+			class="w-3 h-full bg-blue-500 dark:bg-blue-600 cursor-pointer hover:bg-blue-600 dark:hover:bg-blue-700 transition-colors rounded-l-lg border-0"
+			onclick={toggleDrawer}
+			aria-label="Open message center"
+		></button>
+	{/if}
 
-	<!-- Main Content -->
+	<!-- Main Content (only visible when open) -->
+	{#if isOpen}
 	<div class="flex flex-1 h-full overflow-hidden">
 		<!-- Left Panel: Chat List -->
 		<div class="w-64 flex flex-col border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -462,7 +514,7 @@
 
 				<!-- Messages Area -->
 				<div class="flex-1 overflow-y-auto p-4 space-y-4">
-					{#each messages as message (message.id)}
+					{#each currentMessages as message (message.id)}
 						<div class="flex {message.isOwn ? 'justify-end' : 'justify-start'}">
 							<div class="max-w-[70%] {message.isOwn ? 'bg-blue-500 text-white' : 'bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200'} rounded-lg px-4 py-2 shadow-sm">
 								{#if !message.isOwn}
@@ -523,5 +575,7 @@
 			{/if}
 		</div>
 	</div>
+	{/if}
 </div>
+
 
