@@ -200,7 +200,7 @@
 			</button>
 		</div>
 	{:else}
-		<div class="max-w-2xl space-y-6">
+		<div class="max-w-4xl space-y-6">
 			<!-- Save Success Toast -->
 			{#if saveSuccess}
 				<div class="fixed top-24 right-10 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in z-50">

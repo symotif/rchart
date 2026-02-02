@@ -3,15 +3,15 @@
 	import { goto } from '$app/navigation';
 	import { addTab } from '../../stores/TabStore';
 	import { invoke } from '@tauri-apps/api/tauri';
+	import { AppDataStore } from '../../stores/AppDataStore';
 	import type { Patient } from '$lib/types/patient';
 	import type { PatientList, PatientListColumn, PatientListWithPatients } from '$lib/types/patientList';
 	import { AVAILABLE_COLUMNS, LIST_COLORS, LIST_ICONS } from '$lib/types/patientList';
 
-	let loading = $state(true);
 	let error = $state('');
 
-	// Patient lists
-	let patientLists = $state<PatientList[]>([]);
+	// Use preloaded data from AppDataStore
+	let patientLists = $derived($AppDataStore.patientLists);
 	let selectedListId = $state<number | null>(null);
 	let currentListData = $state<PatientListWithPatients | null>(null);
 
@@ -49,47 +49,28 @@
 		return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear() % 100}`;
 	}
 
-	async function loadPatientLists() {
-		try {
-			loading = true;
-			error = '';
-
-			// Seed user data first to ensure we have a user
-			await invoke('db_seed_user_data');
-
-			// Seed patient lists for user 1
-			await invoke('db_seed_patient_lists', { userId: 1 });
-
-			// Get all lists for user
-			patientLists = await invoke<PatientList[]>('db_get_patient_lists', { userId: 1 });
-
-			// Select the default list or first list
-			if (patientLists.length > 0) {
-				const defaultList = patientLists.find(l => l.is_default) || patientLists[0];
-				selectedListId = defaultList.id;
-				await loadListData(selectedListId!);
-			}
-		} catch (e) {
-			error = e instanceof Error ? e.message : String(e);
-			console.error('Failed to load patient lists:', e);
-		} finally {
-			loading = false;
+	function initializeFromStore() {
+		// Select the default list or first list from preloaded data
+		if (patientLists.length > 0 && !selectedListId) {
+			const defaultList = patientLists.find(l => l.is_default) || patientLists[0];
+			selectedListId = defaultList.id;
+			loadListData(selectedListId!);
 		}
 	}
 
-	async function loadListData(listId: number) {
-		try {
-			currentListData = await invoke<PatientListWithPatients | null>('db_get_patient_list', { listId });
-		} catch (e) {
-			console.error('Failed to load list data:', e);
+	function loadListData(listId: number) {
+		// Get preloaded list data from store
+		const listData = $AppDataStore.patientListsWithPatients.get(listId);
+		if (listData) {
+			currentListData = listData;
 		}
 	}
 
-	async function handleListChange(event: Event) {
+	function handleListChange(event: Event) {
 		const select = event.target as HTMLSelectElement;
 		const listId = parseInt(select.value);
 		selectedListId = listId;
-		await loadListData(listId);
+		loadListData(listId);
 	}
 
 	async function handleCreateList() {
@@ -137,10 +118,10 @@
 
 			await invoke('db_update_list_columns', { listId, columns });
 
-			// Reload lists and select the new one
-			patientLists = await invoke<PatientList[]>('db_get_patient_lists', { userId: 1 });
+			// Refresh the store and select the new list
+			await AppDataStore.refreshPatientLists();
 			selectedListId = listId;
-			await loadListData(listId);
+			loadListData(listId);
 
 			// Reset form and close modal
 			showNewListModal = false;
@@ -167,7 +148,14 @@
 	}
 
 	onMount(() => {
-		loadPatientLists();
+		initializeFromStore();
+	});
+
+	// Re-initialize when store data changes
+	$effect(() => {
+		if ($AppDataStore.isLoaded && patientLists.length > 0 && !selectedListId) {
+			initializeFromStore();
+		}
 	});
 
 	function onPatientRowClick(patientId: string, patientName: string): void {
@@ -259,15 +247,10 @@
 	</div>
 
 	<!-- Table Container -->
-	{#if loading}
-		<div class="flex items-center justify-center h-64 text-gray-600 dark:text-gray-400">
-			<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mr-3"></div>
-			Loading patients...
-		</div>
-	{:else if error}
+	{#if error}
 		<div class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
 			<p class="text-red-600 dark:text-red-400">Error: {error}</p>
-			<button onclick={loadPatientLists} class="mt-2 text-sm text-red-600 dark:text-red-400 underline">
+			<button onclick={() => AppDataStore.refreshPatientLists()} class="mt-2 text-sm text-red-600 dark:text-red-400 underline">
 				Try again
 			</button>
 		</div>
