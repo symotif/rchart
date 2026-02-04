@@ -3,9 +3,19 @@
 	import { setTab } from '../../stores/SideBarStore';
 	import { addTab } from '../../stores/TabStore';
 	import { institution, isOnline } from '../../stores/SyncStatusStore';
+	import { currentStatus, statusMessage, initUserStatus } from '../../stores/UserStatusStore';
+	import { USER_STATUS_CONFIG } from '../types/user';
+	import { onMount } from 'svelte';
 
 	// State for institution switcher modal
 	let showInstitutionSwitcher = $state(false);
+
+	// Get status color for the indicator dot
+	let statusBgColor = $derived(USER_STATUS_CONFIG[$currentStatus].bgColor);
+
+	onMount(() => {
+		initUserStatus();
+	});
 
 	function openProfile() {
 		const tab = {
@@ -34,43 +44,41 @@
 		class="relative flex items-center justify-center mt-3 transform transition-all duration-200 ease-in-out group-hover:scale-110"
 	>
 		<!-- profile button -->
-		<button onclick={openProfile} class="relative">
+		<button onclick={openProfile} class="relative" title={$statusMessage ? `Status: ${$statusMessage}` : USER_STATUS_CONFIG[$currentStatus].label}>
 			<img
 				class="w-16 h-16 rounded-full border-2 border-blue-400"
 				src="./src/lib/img/doctor_headshot.jpg"
 				alt="profile-pic"
 				draggable="false"
 			/>
-			<!-- Online indicator -->
+			<!-- Status indicator dot (shows user's current status with color) -->
 			<span
-				class={`w-4 h-4 rounded-full absolute bottom-0 left-0 border-2 border-white dark:border-gray-800 ${
-					$isOnline ? 'bg-green-500' : 'bg-gray-400'
-				}`}
+				class={`w-4 h-4 rounded-full absolute bottom-0 left-0 border-2 border-white dark:border-gray-800 transition-colors duration-300 ${statusBgColor}`}
+				title={USER_STATUS_CONFIG[$currentStatus].label}
 			></span>
 		</button>
 
-		<!-- institution badge - separate button -->
+		<!-- institution badge - separate button with ring -->
 		<button
 			onclick={openInstitutionSwitcher}
 			class="absolute bottom-0 right-0 transform transition-all duration-150 hover:scale-110 active:scale-95"
 			title={$institution ? `${$institution.name}${$institution.department ? ` - ${$institution.department}` : ''}\nClick to switch` : 'Select institution'}
 		>
-			{#if $institution?.logoUrl}
-				<img
-					class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 shadow-md"
-					src={$institution.logoUrl}
-					alt={$institution.name}
-					draggable="false"
-				/>
-			{:else}
-				<div class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 shadow-md bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
-					<i class="fa-solid fa-building text-gray-500 dark:text-gray-300 text-xs"></i>
-				</div>
-			{/if}
-			<!-- Small indicator showing it's clickable -->
-			<span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-blue-500 border border-white dark:border-gray-800 flex items-center justify-center">
-				<i class="fa-solid fa-exchange-alt text-white text-[6px]"></i>
-			</span>
+			<!-- Ring around institution badge -->
+			<div class="w-9 h-9 rounded-full p-0.5 bg-blue-400 shadow-md">
+				{#if $institution?.logoUrl}
+					<img
+						class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800"
+						src={$institution.logoUrl}
+						alt={$institution.name}
+						draggable="false"
+					/>
+				{:else}
+					<div class="w-8 h-8 rounded-full border-2 border-white dark:border-gray-800 bg-gray-200 dark:bg-gray-600 flex items-center justify-center">
+						<i class="fa-solid fa-building text-gray-500 dark:text-gray-300 text-xs"></i>
+					</div>
+				{/if}
+			</div>
 		</button>
 	</div>
 

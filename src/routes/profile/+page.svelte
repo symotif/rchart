@@ -1,13 +1,67 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { invoke } from '@tauri-apps/api/tauri';
-	import type { UserFullData, UserEducation, UserBadge } from '$lib/types/user';
-	import { EDUCATION_TYPE_NAMES, BADGE_TYPE_INFO } from '$lib/types/user';
+	import type { UserFullData, UserEducation, UserBadge, UserPresenceStatus, StatusDuration } from '$lib/types/user';
+	import { EDUCATION_TYPE_NAMES, BADGE_TYPE_INFO, USER_STATUS_CONFIG, STATUS_DURATION_OPTIONS } from '$lib/types/user';
+	import {
+		currentStatus,
+		statusMessage,
+		statusExpiresAt,
+		setUserStatus,
+		getTimeRemaining,
+		initUserStatus
+	} from '../../stores/UserStatusStore';
 
 	let userData: UserFullData | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let isEditing = $state(false);
+
+	// Status editing state
+	let showStatusPicker = $state(false);
+	let selectedStatus = $state<UserPresenceStatus>('online');
+	let selectedDuration = $state<StatusDuration>(null);
+	let customStatusMessage = $state('');
+	let timeRemainingText = $state<string | null>(null);
+
+	// Update time remaining every second
+	let timeRemainingInterval: ReturnType<typeof setInterval> | null = null;
+
+	function updateTimeRemaining() {
+		const remaining = getTimeRemaining();
+		if (remaining) {
+			if (remaining.minutes > 0) {
+				timeRemainingText = `${remaining.minutes}m ${remaining.seconds}s remaining`;
+			} else {
+				timeRemainingText = `${remaining.seconds}s remaining`;
+			}
+		} else {
+			timeRemainingText = null;
+		}
+	}
+
+	function openStatusPicker() {
+		selectedStatus = $currentStatus;
+		customStatusMessage = $statusMessage ?? '';
+		selectedDuration = null;
+		showStatusPicker = true;
+	}
+
+	function closeStatusPicker() {
+		showStatusPicker = false;
+	}
+
+	function applyStatus() {
+		setUserStatus(selectedStatus, {
+			message: customStatusMessage || null,
+			durationMinutes: selectedDuration
+		});
+		showStatusPicker = false;
+	}
+
+	function quickSetStatus(status: UserPresenceStatus) {
+		setUserStatus(status);
+	}
 
 	// Edit form state
 	let editForm = $state({
@@ -21,7 +75,18 @@
 	});
 
 	onMount(async () => {
+		initUserStatus();
 		await loadUserData();
+
+		// Update time remaining every second
+		timeRemainingInterval = setInterval(updateTimeRemaining, 1000);
+		updateTimeRemaining();
+	});
+
+	onDestroy(() => {
+		if (timeRemainingInterval) {
+			clearInterval(timeRemainingInterval);
+		}
 	});
 
 	async function loadUserData() {
@@ -132,7 +197,7 @@
 	}
 </script>
 
-<div class="absolute left-20 top-20 right-0 bottom-5 px-5 py-8 overflow-y-auto">
+<div class="absolute left-20 top-24 right-0 bottom-5 px-5 py-8 overflow-y-auto">
 	{#if loading}
 		<div class="flex items-center justify-center h-64">
 			<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -294,6 +359,64 @@
 				{/if}
 			</div>
 
+			<!-- Online Status Section -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+					<i class="fa-solid fa-signal mr-2 text-green-500"></i>Online Status
+				</h2>
+
+				<!-- Current Status Display -->
+				<div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg mb-4">
+					<div class="flex items-center gap-3">
+						<span class={`w-4 h-4 rounded-full ${USER_STATUS_CONFIG[$currentStatus].bgColor}`}></span>
+						<div>
+							<p class="font-medium text-gray-900 dark:text-gray-100">
+								{USER_STATUS_CONFIG[$currentStatus].label}
+							</p>
+							{#if $statusMessage}
+								<p class="text-sm text-gray-500 dark:text-gray-400 italic">
+									"{$statusMessage}"
+								</p>
+							{/if}
+							{#if timeRemainingText}
+								<p class="text-xs text-gray-400 dark:text-gray-500">
+									<i class="fa-solid fa-clock mr-1"></i>{timeRemainingText}
+								</p>
+							{/if}
+						</div>
+					</div>
+					<button
+						onclick={openStatusPicker}
+						class="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+					>
+						<i class="fa-solid fa-pen mr-2"></i>Change
+					</button>
+				</div>
+
+				<!-- Quick Status Buttons -->
+				<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+					{#each Object.entries(USER_STATUS_CONFIG) as [status, config]}
+						<button
+							onclick={() => quickSetStatus(status as UserPresenceStatus)}
+							class={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+								$currentStatus === status
+									? `border-current ${config.color} bg-opacity-10`
+									: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+							}`}
+							style={$currentStatus === status ? `background-color: ${config.bgColor.replace('bg-', '')}20` : ''}
+						>
+							<span class={`w-3 h-3 rounded-full ${config.bgColor}`}></span>
+							<span class="text-xs font-medium text-gray-700 dark:text-gray-300">{config.label}</span>
+						</button>
+					{/each}
+				</div>
+
+				<p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
+					<i class="fa-solid fa-info-circle mr-1"></i>
+					Your status is visible to other team members when they view the chat roster
+				</p>
+			</div>
+
 			<!-- Bio Section -->
 			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">
@@ -411,3 +534,98 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Status Picker Modal -->
+{#if showStatusPicker}
+	<div class="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center" onclick={closeStatusPicker}>
+		<div
+			class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-md w-full mx-4"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<div class="flex items-center justify-between mb-4">
+				<h2 class="text-lg font-bold text-gray-900 dark:text-white">Set Your Status</h2>
+				<button
+					onclick={closeStatusPicker}
+					class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+				>
+					<i class="fa-solid fa-times"></i>
+				</button>
+			</div>
+
+			<!-- Status Options -->
+			<div class="space-y-2 mb-4">
+				{#each Object.entries(USER_STATUS_CONFIG) as [status, config]}
+					<button
+						onclick={() => (selectedStatus = status as UserPresenceStatus)}
+						class={`w-full p-3 rounded-lg border-2 transition-all flex items-center gap-3 text-left ${
+							selectedStatus === status
+								? `border-blue-500 bg-blue-50 dark:bg-blue-900/30`
+								: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+						}`}
+					>
+						<span class={`w-4 h-4 rounded-full ${config.bgColor}`}></span>
+						<div class="flex-1">
+							<p class="font-medium text-gray-900 dark:text-gray-100">{config.label}</p>
+							<p class="text-sm text-gray-500 dark:text-gray-400">{config.description}</p>
+						</div>
+						{#if selectedStatus === status}
+							<i class="fa-solid fa-check text-blue-500"></i>
+						{/if}
+					</button>
+				{/each}
+			</div>
+
+			<!-- Status Message -->
+			<div class="mb-4">
+				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+					Status Message (optional)
+				</label>
+				<input
+					type="text"
+					bind:value={customStatusMessage}
+					placeholder="e.g., In a meeting until 3pm"
+					maxlength="100"
+					class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				/>
+				<p class="text-xs text-gray-400 mt-1">{customStatusMessage.length}/100</p>
+			</div>
+
+			<!-- Duration Selector -->
+			<div class="mb-6">
+				<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+					Clear status after
+				</label>
+				<div class="grid grid-cols-2 gap-2">
+					{#each STATUS_DURATION_OPTIONS as option}
+						<button
+							onclick={() => (selectedDuration = option.value)}
+							class={`px-3 py-2 text-sm rounded-lg border transition-all ${
+								selectedDuration === option.value
+									? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+									: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
+							}`}
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
+			</div>
+
+			<!-- Action Buttons -->
+			<div class="flex gap-3">
+				<button
+					onclick={closeStatusPicker}
+					class="flex-1 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={applyStatus}
+					class="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+				>
+					Set Status
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

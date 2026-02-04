@@ -6,12 +6,13 @@
 	import Calendar from '$lib/components/calendar/Calendar.svelte';
 	import EventModal from '$lib/components/calendar/EventModal.svelte';
 	import DashboardStats from '$lib/components/dashboard/DashboardStats.svelte';
+	import MyTasks from '$lib/components/MyTasks.svelte';
 	import type { CalendarEvent } from '$lib/types/calendar';
 
 	// Panel sizes (persisted in state)
-	let leftPanelWidth = $state(420);
-	let rightPanelWidth = $state(220);
-	let calendarHeight = $state(380);
+	let leftPanelWidth = $state(480);
+	let rightPanelWidth = $state(280);
+	let calendarHeight = $state(450);
 
 	// Resize state
 	let isResizingLeft = $state(false);
@@ -565,7 +566,7 @@
 
 <!-- page content -->
 <div
-	class="dashboard-container absolute top-20 left-20 right-10 bottom-10 my-4 ml-5 mr-3 flex flex-row"
+	class="dashboard-container absolute top-24 left-20 right-10 bottom-10 my-4 ml-5 mr-3 flex flex-row"
 	class:resizing={isResizingLeft || isResizingRight || isResizingCalendar}
 >
 	<!-- LEFT PANEL: Schedule/Appointments -->
@@ -696,29 +697,14 @@
 	></div>
 
 	<!-- RIGHT PANEL: Tasks -->
-	<div class="panel bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-4 overflow-auto" style="width: {rightPanelWidth}px; flex-shrink: 0;">
-		<div class="p-4">
-			<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">My Tasks</h2>
-			<ul class="space-y-2">
-				<li class="p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-					<input type="checkbox" class="rounded text-blue-500" />
-					<span>Review patient charts</span>
-				</li>
-				<li class="p-2 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-					<input type="checkbox" class="rounded text-yellow-500" />
-					<span>Follow up with lab results</span>
-				</li>
-				<li class="p-2 bg-green-50 dark:bg-green-900/30 rounded-lg text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-					<input type="checkbox" class="rounded text-green-500" />
-					<span>Complete documentation</span>
-				</li>
-				<li class="p-2 bg-purple-50 dark:bg-purple-900/30 rounded-lg text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
-					<input type="checkbox" class="rounded text-purple-500" />
-					<span>Sign prescriptions</span>
-				</li>
-			</ul>
+	<div class="panel bg-white dark:bg-gray-800 rounded-lg shadow-lg mt-4 overflow-hidden flex flex-col" style="width: {rightPanelWidth}px; flex-shrink: 0;">
+		<div class="p-4 flex-1 overflow-hidden flex flex-col">
+			<MyTasks />
+		</div>
 
-			<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mt-6 mb-3">Quick Actions</h2>
+		<!-- Quick Actions -->
+		<div class="p-4 pt-0 border-t border-gray-200 dark:border-gray-700 mt-auto">
+			<h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-3">Quick Actions</h2>
 			<div class="space-y-2">
 				<button
 					onclick={() => handleEventCreate(selectedDate)}

@@ -81,7 +81,7 @@
 	});
 </script>
 
-<div class="absolute top-20 left-20 right-10 bottom-10 my-4 ml-5 mr-3 overflow-auto">
+<div class="absolute top-24 left-20 right-10 bottom-10 my-4 ml-5 mr-3 overflow-auto">
 	{#if loading}
 		<div class="flex items-center justify-center h-full">
 			<div class="text-gray-600 dark:text-gray-400">

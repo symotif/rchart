@@ -1,4 +1,5 @@
 import { sveltekit } from '@sveltejs/kit/vite';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import fs from 'fs';
 
@@ -7,7 +8,7 @@ const tauriConfig = JSON.parse(viteTauriSetup);
 const port = parseInt(tauriConfig.build.devPath.split(':').pop() || '5173');
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [tailwindcss(), sveltekit()],
 	server: {
 		port,
 		strictPort: true

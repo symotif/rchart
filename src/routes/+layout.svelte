@@ -54,7 +54,7 @@
 
 <div class="overscroll-none bg-gray-300 dark:bg-gray-900 app-container">
 	<!-- top bar -->
-	<section class="flex flex-col absolute top-0 left-20 h-30 w-full pt-3 px-5 bg-white dark:bg-gray-800 z-40">
+	<section class="flex flex-col absolute top-0 left-20 h-30 w-full pt-6 px-5 bg-white dark:bg-gray-800 z-40">
 		<!-- the top part of the bar -->
 		<div class="flex flex-row">
 			<!-- search box (opens command palette) -->
@@ -136,7 +136,7 @@
 			{@render children()}
 		{:else}
 			<!-- No tabs - show version screen -->
-			<div class="absolute inset-0 left-20 top-20 flex items-center justify-center">
+			<div class="absolute inset-0 left-20 top-24 flex items-center justify-center">
 				<p class="text-gray-400 dark:text-gray-500 text-lg font-light">rchart version {appVersion}</p>
 			</div>
 		{/if}

@@ -493,34 +493,28 @@
 	});
 </script>
 
-<div class="absolute left-20 top-20 right-0 bottom-5 px-8 py-8 overflow-y-auto">
+<div class="absolute left-20 top-24 right-0 bottom-5 px-8 py-8 overflow-y-auto">
 	<div class="max-w-6xl mx-auto">
-		<!-- Page Header -->
-		<div class="mb-6">
-			<h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Statistics</h1>
-			<p class="text-sm text-gray-500 dark:text-gray-400">Financial and productivity metrics</p>
-		</div>
-
 		<!-- Financial Stats Cards -->
 		<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-			<div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-4">
-				<p class="text-xs text-gray-500 dark:text-gray-400">Est. Monthly Revenue</p>
-				<p class="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(financialStats.monthlyEstimate)}</p>
+			<div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
+				<p class="text-xs text-green-600 dark:text-green-400 font-medium">Est. Monthly Revenue</p>
+				<p class="text-2xl font-bold text-green-700 dark:text-green-300">{formatCurrency(financialStats.monthlyEstimate)}</p>
 			</div>
 
-			<div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4">
-				<p class="text-xs text-gray-500 dark:text-gray-400">YTD Revenue</p>
-				<p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(financialStats.ytdRevenue)}</p>
+			<div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+				<p class="text-xs text-blue-600 dark:text-blue-400 font-medium">YTD Revenue</p>
+				<p class="text-2xl font-bold text-blue-700 dark:text-blue-300">{formatCurrency(financialStats.ytdRevenue)}</p>
 			</div>
 
-			<div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4">
-				<p class="text-xs text-gray-500 dark:text-gray-400">Collection Rate</p>
-				<p class="text-2xl font-bold text-purple-600 dark:text-purple-400">{financialStats.collectionRate}%</p>
+			<div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+				<p class="text-xs text-purple-600 dark:text-purple-400 font-medium">Collection Rate</p>
+				<p class="text-2xl font-bold text-purple-700 dark:text-purple-300">{financialStats.collectionRate}%</p>
 			</div>
 
-			<div class="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-4">
-				<p class="text-xs text-gray-500 dark:text-gray-400">Avg Reimbursement</p>
-				<p class="text-2xl font-bold text-teal-600 dark:text-teal-400">{formatCurrency(financialStats.avgReimbursement)}</p>
+			<div class="bg-teal-50 dark:bg-teal-900/30 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
+				<p class="text-xs text-teal-600 dark:text-teal-400 font-medium">Avg Reimbursement</p>
+				<p class="text-2xl font-bold text-teal-700 dark:text-teal-300">{formatCurrency(financialStats.avgReimbursement)}</p>
 			</div>
 		</div>
 

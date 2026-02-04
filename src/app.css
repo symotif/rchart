@@ -1,7 +1,34 @@
 @import '@fontsource/fira-mono';
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+/* Enable dark mode with class selector */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	/* Custom colors */
+	--color-primary: #202225;
+	--color-secondary: #5865f2;
+
+	/* Custom gray palette (Discord-style dark colors) */
+	--color-gray-900: #202225;
+	--color-gray-800: #2f3136;
+	--color-gray-700: #36393f;
+	--color-gray-600: #4f545c;
+	--color-gray-500: #72767d;
+	--color-gray-400: #d4d7dc;
+	--color-gray-300: #e3e5e8;
+	--color-gray-200: #ebedef;
+	--color-gray-100: #f2f3f5;
+
+	/* Animation */
+	--animate-shimmer: shimmer 10s infinite linear;
+}
+
+@keyframes shimmer {
+	0% { background-position: -150% 0; }
+	50% { background-position: 150% 0; }
+	100% { background-position: -150% 0; }
+}
 
 :root {
 	font-family: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
@@ -52,7 +79,19 @@ h1,
 h2,
 p {
 	font-weight: 400;
+}
+
+/* Only apply default heading color if not using Tailwind classes */
+h1:not([class*="text-"]),
+h2:not([class*="text-"]),
+p:not([class*="text-"]) {
 	color: var(--heading-color);
+}
+
+.dark h1:not([class*="text-"]),
+.dark h2:not([class*="text-"]),
+.dark p:not([class*="text-"]) {
+	color: #e5e7eb;
 }
 
 p {

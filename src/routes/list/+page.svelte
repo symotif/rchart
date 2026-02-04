@@ -205,7 +205,7 @@
 	let selectedList = $derived(patientLists.find(l => l.id === selectedListId));
 </script>
 
-<div class="absolute left-20 top-20 right-0 bottom-5 px-5 py-6 overflow-hidden flex flex-col">
+<div class="absolute left-20 top-24 right-0 bottom-5 px-5 py-6 overflow-hidden flex flex-col">
 	<!-- Header with List Selector -->
 	<div class="flex items-center justify-between mb-4 flex-shrink-0">
 		<div class="flex items-center gap-4">

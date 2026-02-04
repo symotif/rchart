@@ -386,49 +386,49 @@
 	<div class="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
 		<!-- Quick Stats Row -->
 		<div class="grid grid-cols-2 gap-3">
-			<div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
+			<div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
 				<div class="flex items-center gap-2">
 					<div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm">
 						<i class="fa-solid fa-calendar-check"></i>
 					</div>
 					<div>
-						<p class="text-xl font-bold text-gray-800 dark:text-gray-100">{todayAppointments}</p>
+						<p class="text-xl font-bold text-blue-700 dark:text-blue-300">{todayAppointments}</p>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Today's Appts</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
+			<div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 border border-green-200 dark:border-green-800">
 				<div class="flex items-center gap-2">
 					<div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-sm">
 						<i class="fa-solid fa-check"></i>
 					</div>
 					<div>
-						<p class="text-xl font-bold text-gray-800 dark:text-gray-100">{todayAppointments - completedAppointments}</p>
+						<p class="text-xl font-bold text-green-700 dark:text-green-300">{todayAppointments - completedAppointments}</p>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Remaining</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="bg-cyan-50 dark:bg-cyan-900/30 rounded-lg p-3">
+			<div class="bg-cyan-50 dark:bg-cyan-900/30 rounded-lg p-3 border border-cyan-200 dark:border-cyan-800">
 				<div class="flex items-center gap-2">
 					<div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center text-white text-sm">
 						<i class="fa-solid fa-video"></i>
 					</div>
 					<div>
-						<p class="text-xl font-bold text-gray-800 dark:text-gray-100">{telehealthCount}</p>
+						<p class="text-xl font-bold text-cyan-700 dark:text-cyan-300">{telehealthCount}</p>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Telehealth</p>
 					</div>
 				</div>
 			</div>
 
-			<div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3">
+			<div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
 				<div class="flex items-center gap-2">
 					<div class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm">
 						<i class="fa-solid fa-users"></i>
 					</div>
 					<div>
-						<p class="text-xl font-bold text-gray-800 dark:text-gray-100">1,356</p>
+						<p class="text-xl font-bold text-purple-700 dark:text-purple-300">1,356</p>
 						<p class="text-xs text-gray-500 dark:text-gray-400">Panel Size</p>
 					</div>
 				</div>

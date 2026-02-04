@@ -96,7 +96,7 @@
 	}
 </script>
 
-<div class="absolute top-20 left-20 right-0 bottom-6 flex flex-col overflow-hidden">
+<div class="absolute top-24 left-20 right-0 bottom-6 flex flex-col overflow-hidden">
 	<!-- Header -->
 	<div class="flex-shrink-0 px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
 		<div class="flex items-center justify-between mb-4">

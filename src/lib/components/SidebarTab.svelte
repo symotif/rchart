@@ -33,7 +33,7 @@
 			class={`flex items-center justify-center h-20 w-20 transition-all duration-300 ease-linear
 					${isActive ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-200' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-500 dark:hover:bg-gray-600 hover:text-white'}`}
 		>
-			<i class={`${icon} fa-solid h-9 w-9`}></i>
+			<i class={`${icon} fa-solid text-2xl`}></i>
 		</div>
 	</a>
 

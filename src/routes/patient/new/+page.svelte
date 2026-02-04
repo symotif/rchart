@@ -136,7 +136,7 @@
 	}
 </script>
 
-<div class="absolute left-20 top-20 right-0 bottom-5 px-5 py-8 overflow-y-auto">
+<div class="absolute left-20 top-24 right-0 bottom-5 px-5 py-8 overflow-y-auto">
 	<div class="max-w-3xl mx-auto">
 		<!-- Header -->
 		<div class="mb-6">
