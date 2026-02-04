@@ -1,9 +1,14 @@
-import { writable } from 'svelte/store';
+/**
+ * @deprecated Use SyncStatusStore instead
+ * This file is kept for backwards compatibility
+ */
+import { derived } from 'svelte/store';
+import { isOnline, setOnlineStatus } from './SyncStatusStore';
 
-const ConnectionStatusStore = writable<boolean>(true);
+// Re-export isOnline as ConnectionStatusStore for backwards compatibility
+export const ConnectionStatusStore = isOnline;
 
-function setConnectionStatus(value: boolean): void {
-	ConnectionStatusStore.update(() => value);
+// Wrapper for setConnectionStatus that uses the new store
+export function setConnectionStatus(value: boolean): void {
+	setOnlineStatus(value);
 }
-
-export { ConnectionStatusStore, setConnectionStatus };

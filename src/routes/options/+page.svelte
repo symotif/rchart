@@ -4,6 +4,17 @@
 	import { ThemeStore, toggleTheme } from '../../stores/ThemeStore';
 	import type { UserFullData, UserSettings } from '$lib/types/user';
 	import { LANGUAGE_OPTIONS } from '$lib/types/user';
+	import {
+		SyncStatusStore,
+		connectionMode,
+		isOnline,
+		localNodesStatus,
+		centralDbStatus,
+		setConnectionMode,
+		checkInternetConnection
+	} from '../../stores/SyncStatusStore';
+	import type { ConnectionMode } from '$lib/types/sync';
+	import { CONNECTION_MODE_NAMES } from '$lib/types/sync';
 
 	let userData: UserFullData | null = $state(null);
 	let loading = $state(true);
@@ -28,6 +39,18 @@
 
 	// 2FA setup
 	let show2FASetup = $state(false);
+
+	// Connection settings
+	let showDbConnectionForm = $state(false);
+	let dbConnectionForm = $state({
+		host: 'localhost',
+		port: 5432,
+		database: 'rchart',
+		username: '',
+		password: ''
+	});
+	let connectionTestResult = $state<{ success: boolean; message: string } | null>(null);
+	let testingConnection = $state(false);
 
 	onMount(async () => {
 		await loadUserData();
@@ -185,6 +208,40 @@
 		// For now, just show a placeholder action
 		alert('Logout functionality will clear your session and return to the login screen.');
 	}
+
+	function handleConnectionModeChange(mode: ConnectionMode) {
+		setConnectionMode(mode);
+		showSaveSuccess();
+	}
+
+	async function testDbConnection() {
+		testingConnection = true;
+		connectionTestResult = null;
+
+		try {
+			// In the future, this will actually test the PostgreSQL connection
+			// For now, simulate a connection test
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+
+			// Placeholder - would actually call Tauri to test connection
+			connectionTestResult = {
+				success: true,
+				message: 'Connection test placeholder - PostgreSQL integration coming soon'
+			};
+		} catch {
+			connectionTestResult = {
+				success: false,
+				message: 'Failed to connect to database'
+			};
+		} finally {
+			testingConnection = false;
+		}
+	}
+
+	async function refreshConnectionStatus() {
+		await checkInternetConnection();
+		showSaveSuccess();
+	}
 </script>
 
 <div class="absolute left-20 top-20 right-0 bottom-5 px-5 py-8 overflow-y-auto">
@@ -268,6 +325,296 @@
 							></span>
 						</button>
 					</div>
+				</div>
+			</div>
+
+			<!-- Sync & Connection Section -->
+			<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+				<h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-4">
+					<i class="fa-solid fa-cloud mr-2 text-cyan-500"></i>Sync & Connection
+				</h2>
+
+				<div class="space-y-4">
+					<!-- Connection Status -->
+					<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<div class="flex items-center justify-between mb-3">
+							<div class="flex items-center gap-2">
+								<span
+									class={`w-3 h-3 rounded-full ${$isOnline ? 'bg-green-500' : 'bg-gray-400'}`}
+								></span>
+								<p class="font-medium text-gray-800 dark:text-gray-100">
+									Internet Status: {$isOnline ? 'Online' : 'Offline'}
+								</p>
+							</div>
+							<button
+								onclick={refreshConnectionStatus}
+								class="px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+							>
+								<i class="fa-solid fa-refresh mr-1"></i>Refresh
+							</button>
+						</div>
+					</div>
+
+					<!-- Connection Mode -->
+					<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+						<p class="font-medium text-gray-800 dark:text-gray-100 mb-3">Connection Mode</p>
+						<p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+							Choose how this device connects and syncs data
+						</p>
+
+						<div class="space-y-2">
+							<!-- Offline Mode -->
+							<label
+								class={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+									$connectionMode === 'offline'
+										? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+										: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+								}`}
+							>
+								<input
+									type="radio"
+									name="connectionMode"
+									value="offline"
+									checked={$connectionMode === 'offline'}
+									onchange={() => handleConnectionModeChange('offline')}
+									class="sr-only"
+								/>
+								<div class="flex items-center gap-3 flex-1">
+									<i class="fa-solid fa-wifi-slash text-gray-500 dark:text-gray-400 w-5"></i>
+									<div>
+										<p class="font-medium text-gray-800 dark:text-gray-100">Offline Mode</p>
+										<p class="text-sm text-gray-500 dark:text-gray-400">Work locally without sync</p>
+									</div>
+								</div>
+								{#if $connectionMode === 'offline'}
+									<i class="fa-solid fa-check text-blue-500"></i>
+								{/if}
+							</label>
+
+							<!-- Local Nodes Only -->
+							<label
+								class={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+									$connectionMode === 'local_nodes'
+										? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+										: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+								}`}
+							>
+								<input
+									type="radio"
+									name="connectionMode"
+									value="local_nodes"
+									checked={$connectionMode === 'local_nodes'}
+									onchange={() => handleConnectionModeChange('local_nodes')}
+									class="sr-only"
+								/>
+								<div class="flex items-center gap-3 flex-1">
+									<i class="fa-solid fa-network-wired text-blue-500 w-5"></i>
+									<div>
+										<p class="font-medium text-gray-800 dark:text-gray-100">Local Network Only</p>
+										<p class="text-sm text-gray-500 dark:text-gray-400">Sync with other devices on your network</p>
+									</div>
+								</div>
+								{#if $connectionMode === 'local_nodes'}
+									<i class="fa-solid fa-check text-blue-500"></i>
+								{/if}
+							</label>
+
+							<!-- Central DB Only -->
+							<label
+								class={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+									$connectionMode === 'central_db'
+										? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+										: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+								}`}
+							>
+								<input
+									type="radio"
+									name="connectionMode"
+									value="central_db"
+									checked={$connectionMode === 'central_db'}
+									onchange={() => handleConnectionModeChange('central_db')}
+									class="sr-only"
+								/>
+								<div class="flex items-center gap-3 flex-1">
+									<i class="fa-solid fa-database text-purple-500 w-5"></i>
+									<div>
+										<p class="font-medium text-gray-800 dark:text-gray-100">Central Database Only</p>
+										<p class="text-sm text-gray-500 dark:text-gray-400">Sync directly with PostgreSQL server</p>
+									</div>
+								</div>
+								{#if $connectionMode === 'central_db'}
+									<i class="fa-solid fa-check text-blue-500"></i>
+								{/if}
+							</label>
+
+							<!-- Both (Full Sync) -->
+							<label
+								class={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+									$connectionMode === 'both'
+										? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+										: 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
+								}`}
+							>
+								<input
+									type="radio"
+									name="connectionMode"
+									value="both"
+									checked={$connectionMode === 'both'}
+									onchange={() => handleConnectionModeChange('both')}
+									class="sr-only"
+								/>
+								<div class="flex items-center gap-3 flex-1">
+									<i class="fa-solid fa-cloud-arrow-up text-green-500 w-5"></i>
+									<div>
+										<p class="font-medium text-gray-800 dark:text-gray-100">Full Sync (Nodes + Central)</p>
+										<p class="text-sm text-gray-500 dark:text-gray-400">Sync with local nodes and central database</p>
+									</div>
+								</div>
+								{#if $connectionMode === 'both'}
+									<i class="fa-solid fa-check text-blue-500"></i>
+								{/if}
+							</label>
+						</div>
+					</div>
+
+					<!-- Central DB Configuration (shown when central_db or both is selected) -->
+					{#if $connectionMode === 'central_db' || $connectionMode === 'both'}
+						<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+							<div class="flex items-center justify-between mb-3">
+								<p class="font-medium text-gray-800 dark:text-gray-100">
+									<i class="fa-solid fa-database mr-2 text-purple-500"></i>
+									PostgreSQL Connection
+								</p>
+								<button
+									onclick={() => (showDbConnectionForm = !showDbConnectionForm)}
+									class="px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+								>
+									{showDbConnectionForm ? 'Hide' : 'Configure'}
+								</button>
+							</div>
+
+							{#if showDbConnectionForm}
+								<div class="space-y-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+									<div class="grid grid-cols-2 gap-3">
+										<div>
+											<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Host</label>
+											<input
+												type="text"
+												bind:value={dbConnectionForm.host}
+												placeholder="localhost"
+												class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+											/>
+										</div>
+										<div>
+											<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port</label>
+											<input
+												type="number"
+												bind:value={dbConnectionForm.port}
+												placeholder="5432"
+												class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+											/>
+										</div>
+									</div>
+									<div>
+										<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Database Name</label>
+										<input
+											type="text"
+											bind:value={dbConnectionForm.database}
+											placeholder="rchart"
+											class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+										/>
+									</div>
+									<div class="grid grid-cols-2 gap-3">
+										<div>
+											<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+											<input
+												type="text"
+												bind:value={dbConnectionForm.username}
+												placeholder="postgres"
+												class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+											/>
+										</div>
+										<div>
+											<label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+											<input
+												type="password"
+												bind:value={dbConnectionForm.password}
+												placeholder="********"
+												class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+											/>
+										</div>
+									</div>
+
+									{#if connectionTestResult}
+										<div
+											class={`p-3 rounded-lg ${
+												connectionTestResult.success
+													? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+													: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+											}`}
+										>
+											<i class={`fa-solid ${connectionTestResult.success ? 'fa-check-circle' : 'fa-times-circle'} mr-2`}></i>
+											{connectionTestResult.message}
+										</div>
+									{/if}
+
+									<div class="flex gap-2">
+										<button
+											onclick={testDbConnection}
+											disabled={testingConnection}
+											class="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 rounded-lg transition-colors flex items-center gap-2"
+										>
+											{#if testingConnection}
+												<svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+													<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+													<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+												</svg>
+												Testing...
+											{:else}
+												<i class="fa-solid fa-plug"></i>
+												Test Connection
+											{/if}
+										</button>
+										<button
+											class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+										>
+											Save Configuration
+										</button>
+									</div>
+
+									<p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+										<i class="fa-solid fa-info-circle mr-1"></i>
+										ElectricSQL will be used to sync SQLite with PostgreSQL
+									</p>
+								</div>
+							{:else}
+								<p class="text-sm text-gray-500 dark:text-gray-400">
+									{$centralDbStatus.status === 'connected' ? 'Connected to central database' : 'Not configured'}
+								</p>
+							{/if}
+						</div>
+					{/if}
+
+					<!-- Local Nodes Status (shown when local_nodes or both is selected) -->
+					{#if $connectionMode === 'local_nodes' || $connectionMode === 'both'}
+						<div class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+							<p class="font-medium text-gray-800 dark:text-gray-100 mb-2">
+								<i class="fa-solid fa-network-wired mr-2 text-blue-500"></i>
+								Local Network Nodes
+							</p>
+							<div class="flex items-center gap-4">
+								<div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+									{$localNodesStatus.connectedNodes}/{$localNodesStatus.totalNodes}
+								</div>
+								<p class="text-sm text-gray-500 dark:text-gray-400">
+									nodes connected on local network
+								</p>
+							</div>
+							<p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+								Automatic discovery via mDNS - no configuration needed
+							</p>
+						</div>
+					{/if}
 				</div>
 			</div>
 
